@@ -5,8 +5,10 @@ use bevy::{
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
 };
+use bevy_seedling::prelude::*;
 use bevy_trenchbroom::prelude::*;
 use bevy_trenchbroom_avian::AvianPhysicsBackend;
+use rand::seq::IndexedRandom;
 
 // point_class marks it for bevy_trenchbroom
 // - adding a model path is for display in trenchbroom, not pulled for bevy side atm
@@ -42,7 +44,7 @@ const GRAVITY_MULT: f32 = 160.0;
 
 fn main() {
     App::new()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(ImagePlugin::default_nearest()) // show pixels
                 .set(WindowPlugin {
@@ -54,7 +56,8 @@ fn main() {
                     .into(),
                     ..default()
                 }),
-        )
+            SeedlingPlugin::default(),
+        ))
         .add_plugins((
             PhysicsPlugins::default(),
             TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
@@ -70,8 +73,78 @@ fn main() {
             )
             .build(),
         )
-        .add_plugins((CameraPlugin, TrenchLoaderPlugin, BillboardSpritePlugin))
+        .add_plugins((
+            CameraPlugin,
+            AudioPlugin,
+            TrenchLoaderPlugin,
+            BillboardSpritePlugin,
+        ))
         .run();
+}
+
+struct AudioPlugin;
+impl Plugin for AudioPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, play_level_intro_stinger)
+            .add_systems(FixedUpdate, play_walking_noises)
+            .add_observer(on_stinger_finished);
+    }
+}
+
+#[derive(Component)]
+struct OnIntroStingerFinished;
+
+fn play_level_intro_stinger(mut commands: Commands, server: Res<AssetServer>) {
+    commands.spawn((
+        SamplePlayer::new(server.load("sounds/intro1.wav")),
+        OnIntroStingerFinished,
+    ));
+}
+
+fn on_stinger_finished(
+    _: On<Remove, OnIntroStingerFinished>,
+    server: Res<AssetServer>,
+    mut commands: Commands,
+) {
+    info!("Level intro stinger sample finished, playing looped sample!");
+    // Start level bg, looping
+    commands.spawn(SamplePlayer::new(server.load("sounds/bgm1.wav")).looping());
+}
+
+#[derive(Component)]
+struct WalkingSFX;
+
+const WALKING_NOISE_MIN_VEL: f32 = 1.0;
+
+fn play_walking_noises(
+    player_vels: Query<&LinearVelocity, With<PlayerCamera>>,
+    playing_walking_samples: Query<&bevy_seedling::sample::PlaybackSettings, With<WalkingSFX>>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
+) {
+    for vel in player_vels {
+        if vel.length() > WALKING_NOISE_MIN_VEL {
+            // only fire if non are playing
+            if playing_walking_samples.is_empty() {
+                let sfx_path = get_random_walking_sound_path();
+                commands.spawn((SamplePlayer::new(server.load(sfx_path)), WalkingSFX));
+            }
+        }
+    }
+}
+
+fn get_random_walking_sound_path() -> String {
+    let mut rng = rand::rng();
+    let noises = vec![
+        "sounds/squelch1.wav",
+        "sounds/squelch2.wav",
+        "sounds/squelch3.wav",
+        "sounds/squelch4.wav",
+        "sounds/squelch5.wav",
+        "sounds/squelch6.wav",
+        "sounds/squelch7.wav",
+    ];
+    noises.choose(&mut rng).unwrap().to_string()
 }
 
 // Plugin that spawns the camera.
@@ -97,12 +170,12 @@ impl Plugin for CameraPlugin {
 #[derive(Component)]
 struct PlayerCamera;
 
-const PLAYER_START_LOC: Transform = Transform::from_xyz(-7.4, 1., 0.08);
+const PLAYER_START_LOC: Transform = Transform::from_xyz(-5.5, 3.5, -0.25);
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         PlayerCamera,
-        Camera3d::default(),
+        Camera3d::default(), 
         PLAYER_START_LOC
             .clone()
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
