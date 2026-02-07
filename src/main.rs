@@ -106,7 +106,6 @@ fn on_stinger_finished(
     server: Res<AssetServer>,
     mut commands: Commands,
 ) {
-    info!("Level intro stinger sample finished, playing looped sample!");
     // Start level bg, looping
     commands.spawn(SamplePlayer::new(server.load("sounds/bgm1.wav")).looping());
 }
@@ -123,6 +122,7 @@ fn play_walking_noises(
     server: Res<AssetServer>,
 ) {
     for vel in player_vels {
+        // TODO: make this only count walking motion not camera motion lol
         if vel.length() > WALKING_NOISE_MIN_VEL {
             // only fire if non are playing
             if playing_walking_samples.is_empty() {
