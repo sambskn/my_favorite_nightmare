@@ -174,7 +174,10 @@ struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera)
-            .add_systems(FixedUpdate, (player_camera_movement, debug_commands))
+            .add_systems(
+                FixedUpdate,
+                (player_camera_movement, debug_commands_and_oob_reset),
+            )
             .add_systems(
                 Update,
                 (
@@ -260,13 +263,15 @@ fn player_camera_movement(
     }
 }
 
-fn debug_commands(
+const MIN_Y: f32 = -5.;
+fn debug_commands_and_oob_reset(
     mut player_tf_query: Query<&mut Transform, With<PlayerCamera>>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     for mut player_tf in &mut player_tf_query {
         // reset player location to start transform
-        if input.pressed(KeyCode::KeyR) {
+        // also do it if we're way oob )happens on wasm sometimes
+        if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
             player_tf.translation = PLAYER_START_LOC.translation;
         }
         // Log current player transform
