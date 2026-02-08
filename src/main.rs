@@ -113,7 +113,7 @@ fn on_stinger_finished(
 #[derive(Component)]
 struct WalkingSFX;
 
-const WALKING_NOISE_MIN_VEL: f32 = 1.0;
+const WALKING_NOISE_MIN_VEL: f32 = 9.5;
 
 fn play_walking_noises(
     player_vels: Query<&LinearVelocity, With<PlayerCamera>>,
@@ -122,9 +122,8 @@ fn play_walking_noises(
     server: Res<AssetServer>,
 ) {
     for vel in player_vels {
-        // TODO: make this only count walking motion not camera motion lol
         if vel.length() > WALKING_NOISE_MIN_VEL {
-            // only fire if non are playing
+            // only fire if none are playing
             if playing_walking_samples.is_empty() {
                 let sfx_path = get_random_walking_sound_path();
                 commands.spawn((SamplePlayer::new(server.load(sfx_path)), WalkingSFX));
@@ -175,7 +174,7 @@ const PLAYER_START_LOC: Transform = Transform::from_xyz(-5.5, 3.5, -0.25);
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         PlayerCamera,
-        Camera3d::default(), 
+        Camera3d::default(),
         PLAYER_START_LOC
             .clone()
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
