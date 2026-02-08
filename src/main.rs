@@ -33,10 +33,32 @@ impl NPCSprite {
             cull_mode: None,
             ..default()
         });
+        let hover_material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/rat.png")),
+            base_color: Color::Oklcha(Oklcha {
+                lightness: 0.7483,
+                chroma: 0.2393,
+                hue: 147.32,
+                alpha: 1.0,
+            }),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
         world
             .commands()
             .entity(ctx.entity)
-            .insert((Mesh3d(rect_mesh), MeshMaterial3d(material)));
+            .insert((
+                Mesh3d(rect_mesh),
+                MeshMaterial3d(material.clone()),
+                PhysicsPickable,
+                Collider::from(Cuboid {
+                    half_size: Vec3::new(2., 2., 2.),
+                }),
+            ))
+            .observe(update_material_on::<Pointer<Over>>(hover_material.clone()))
+            .observe(update_material_on::<Pointer<Out>>(material.clone()));
     }
 }
 
@@ -60,6 +82,7 @@ fn main() {
         ))
         .add_plugins((
             PhysicsPlugins::default(),
+            PhysicsPickingPlugin,
             TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
         ))
         .insert_resource(Gravity(Vec3::NEG_Y * GRAVITY_MULT))
@@ -169,7 +192,7 @@ impl Plugin for CameraPlugin {
 #[derive(Component)]
 struct PlayerCamera;
 
-const PLAYER_START_LOC: Transform = Transform::from_xyz(-5.5, 3.5, -0.25);
+const PLAYER_START_LOC: Transform = Transform::from_xyz(1.375, 0.9, 0.6);
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
@@ -321,6 +344,17 @@ fn update_billboards(
         let diff = target_tf_rotation.angle_between(current_sprite_rotation);
         if diff > SPRITE_ROTATE_THRESHOLD {
             sprite_tf.rotation = target_tf.rotation;
+        }
+    }
+}
+
+fn update_material_on<E: EntityEvent>(
+    new_material: Handle<StandardMaterial>,
+) -> impl Fn(On<E>, Query<&mut MeshMaterial3d<StandardMaterial>>) {
+    move |trigger, mut query| {
+        if let Ok(mut material) = query.get_mut(trigger.event_target()) {
+            info!("doing a mat switch");
+            material.0 = new_material.clone();
         }
     }
 }
