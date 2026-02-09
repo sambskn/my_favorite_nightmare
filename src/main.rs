@@ -1,3 +1,4 @@
+use crate::ui::{MenuPlugin, MenuState};
 use avian3d::{math::*, prelude::*};
 use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
@@ -9,6 +10,8 @@ use bevy_seedling::prelude::*;
 use bevy_trenchbroom::prelude::*;
 use bevy_trenchbroom_avian::AvianPhysicsBackend;
 use rand::seq::IndexedRandom;
+
+mod ui;
 
 // point_class marks it for bevy_trenchbroom
 // - adding a model path is for display in trenchbroom, not pulled for bevy side atm
@@ -101,6 +104,7 @@ fn main() {
             AudioPlugin,
             TrenchLoaderPlugin,
             BillboardSpritePlugin,
+            MenuPlugin,
         ))
         .run();
 }
@@ -176,7 +180,8 @@ impl Plugin for CameraPlugin {
         app.add_systems(Startup, spawn_camera)
             .add_systems(
                 FixedUpdate,
-                (player_camera_movement, debug_commands_and_oob_reset),
+                (player_camera_movement, debug_commands_and_oob_reset)
+                    .run_if(in_state(MenuState::InGame)),
             )
             .add_systems(
                 Update,
@@ -201,6 +206,10 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         PlayerCamera,
         Camera3d::default(),
+        Camera {
+            order: 1,
+            ..default()
+        },
         PLAYER_START_LOC
             .clone()
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
@@ -224,9 +233,7 @@ fn player_camera_movement(
     for (mut lin_vel, camera) in &mut query {
         // build movement vec from current inputs
         let mut movement_vel = Vec3::ZERO;
-        if input.pressed(KeyCode::KeyW) {
-            movement_vel += Vec3::NEG_Z
-        }
+
         if input.pressed(KeyCode::KeyS) {
             movement_vel += Vec3::Z
         }
