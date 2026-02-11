@@ -1,4 +1,4 @@
-use crate::ui::{MenuPlugin, MenuState};
+use crate::ui::{MenuPlugin, MenuState, TEXT_COLOR};
 use avian3d::{math::*, prelude::*};
 use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
@@ -21,13 +21,51 @@ mod ui;
     model({ path: "sprites/rat.png", scale: 0.5 }),
 )]
 #[component(on_add = Self::on_add)]
-#[derive(Default)]
-struct NPCSprite;
+struct NPCSprite {
+    pub selectable: bool,
+    pub text: Option<String>,
+}
+impl Default for NPCSprite {
+    fn default() -> Self {
+        NPCSprite {
+            selectable: true,
+            text: None,
+        }
+    }
+}
+
+#[derive(Component, Clone)]
+struct SpriteDetails {
+    pub selectable: bool,
+    pub text: Option<String>,
+}
+
+enum Selection {
+    On,
+    Off,
+}
+
 impl NPCSprite {
     pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
         let Some(asset_server) = world.get_resource::<AssetServer>() else {
             return;
         };
+        // Get the selectable value from the NPCSprite
+        // (not spawning out bundles as children of the NPCSprite,
+        // so we need to get any values we need now, put em in SpriteDetails)
+        let npc_sprite = world.get::<NPCSprite>(ctx.entity).unwrap();
+        let selectable = npc_sprite.selectable;
+        let text = if !selectable {
+            None
+        } else {
+            Some(
+                npc_sprite
+                    .text
+                    .clone()
+                    .unwrap_or("THERE SHOULD BE REAL TEXT HERE LOL".to_string()),
+            )
+        };
+
         let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.42, 0.42)));
         let material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/rat.png")),
@@ -54,54 +92,62 @@ impl NPCSprite {
                 RigidBody::Static,
                 Sensor,
                 Collider::from(Cuboid::default()),
+                SpriteDetails { selectable, text },
             ))
-            .observe(update_material_on::<Pointer<Over>>(hover_material.clone()))
-            .observe(update_material_on::<Pointer<Out>>(material.clone()));
+            .observe(update_material_on::<Pointer<Over>>(
+                hover_material.clone(),
+                Selection::On,
+            ))
+            .observe(update_material_on::<Pointer<Out>>(
+                material.clone(),
+                Selection::Off,
+            ));
     }
 }
 
 const GRAVITY_MULT: f32 = 160.0;
 
 fn main() {
-    App::new()
-        .add_plugins((
-            DefaultPlugins
-                .set(ImagePlugin::default_nearest()) // show pixels
-                .set(WindowPlugin {
-                    // setup window
-                    primary_window: Window {
-                        fit_canvas_to_parent: true, // make it fill on web
-                        ..default()
-                    }
-                    .into(),
+    let mut app = App::new();
+    app.add_plugins((
+        DefaultPlugins
+            .set(ImagePlugin::default_nearest()) // show pixels
+            .set(WindowPlugin {
+                // setup window
+                primary_window: Window {
+                    fit_canvas_to_parent: true, // make it fill on web
                     ..default()
-                }),
-            SeedlingPlugin::default(),
-        ))
-        .add_plugins((
-            PhysicsPlugins::default(),
-            PhysicsPickingPlugin,
-            TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
-        ))
-        .insert_resource(Gravity(Vec3::NEG_Y * GRAVITY_MULT))
-        .add_plugins(
-            TrenchBroomPlugins(
-                TrenchBroomConfig::new("my_favorite_nightmare").default_solid_scene_hooks(|| {
-                    SceneHooks::new()
-                        .smooth_by_default_angle()
-                        .convex_collider()
-                }),
-            )
-            .build(),
+                }
+                .into(),
+                ..default()
+            }),
+        SeedlingPlugin::default(),
+    ))
+    .add_plugins((
+        PhysicsPlugins::default(),
+        PhysicsPickingPlugin,
+        TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
+    ))
+    .insert_resource(Gravity(Vec3::NEG_Y * GRAVITY_MULT))
+    .add_plugins(
+        TrenchBroomPlugins(
+            TrenchBroomConfig::new("my_favorite_nightmare").default_solid_scene_hooks(|| {
+                SceneHooks::new()
+                    .smooth_by_default_angle()
+                    .convex_collider()
+            }),
         )
-        .add_plugins((
-            CameraPlugin,
-            AudioPlugin,
-            TrenchLoaderPlugin,
-            BillboardSpritePlugin,
-            MenuPlugin,
-        ))
-        .run();
+        .build(),
+    )
+    .add_plugins((
+        CameraPlugin,
+        AudioPlugin,
+        TrenchLoaderPlugin,
+        BillboardSpritePlugin,
+        MenuPlugin,
+    ));
+
+    app.run();
 }
 
 struct AudioPlugin;
@@ -336,10 +382,16 @@ fn spawn_test_map(mut commands: Commands, asset_server: Res<AssetServer>) {
 struct BillboardSpritePlugin;
 impl Plugin for BillboardSpritePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            update_billboards.run_if(in_state(MenuState::InGame)),
-        );
+        app.insert_resource::<HighlightedSprite>(HighlightedSprite(None))
+            .add_systems(
+                Update,
+                (
+                    update_billboards.run_if(in_state(MenuState::InGame)),
+                    show_text_on_highlighted_click
+                        .run_if(in_state(MenuState::InGame))
+                        .run_if(input_just_pressed(MouseButton::Left)),
+                ),
+            );
     }
 }
 
@@ -364,13 +416,72 @@ fn update_billboards(
         }
     }
 }
+#[derive(Resource)]
+struct HighlightedSprite(Option<SpriteDetails>);
 
 fn update_material_on<E: EntityEvent>(
     new_material: Handle<StandardMaterial>,
-) -> impl Fn(On<E>, Query<&mut MeshMaterial3d<StandardMaterial>>) {
-    move |trigger, mut query| {
-        if let Ok(mut material) = query.get_mut(trigger.event_target()) {
-            material.0 = new_material.clone();
+    selection_mode: Selection,
+) -> impl Fn(
+    On<E>,
+    Query<(&mut MeshMaterial3d<StandardMaterial>, &SpriteDetails)>,
+    ResMut<HighlightedSprite>,
+) {
+    move |trigger, mut query, mut highlighted| {
+        if let Ok((mut material, sprite_deets)) = query.get_mut(trigger.event_target()) {
+            // only swap material if sprite is selectable
+            if sprite_deets.selectable {
+                material.0 = new_material.clone();
+                match selection_mode {
+                    Selection::Off => highlighted.0 = None,
+                    Selection::On => highlighted.0 = Some(sprite_deets.clone()),
+                }
+            }
         }
     }
 }
+
+fn show_text_on_highlighted_click(
+    highlighted: Res<HighlightedSprite>,
+    text_box_query: Query<Entity, With<TextBox>>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
+) {
+    // if textbox exists, make it go away (dirty)
+    for text_box_ent in &text_box_query {
+        commands.entity(text_box_ent).despawn();
+        // return early
+        return;
+    }
+
+    if let Some(sprite_deets) = &highlighted.0 {
+        if let Some(sprite_text) = &sprite_deets.text {
+            commands.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    bottom: vh(10),
+                    left: vw(15),
+                    right: vw(15),
+                    padding: UiRect::all(px(20)),
+                    ..default()
+                },
+                TextBox,
+                BackgroundColor {
+                    0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
+                },
+                children![(
+                    Text::new(sprite_text),
+                    TextColor(TEXT_COLOR),
+                    TextFont {
+                        font: server.load("fonts/OTBrut-Regular.ttf"),
+                        font_size: 18.0,
+                        ..default()
+                    },
+                )],
+            ));
+        }
+    }
+}
+
+#[derive(Component)]
+struct TextBox;

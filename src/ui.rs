@@ -12,8 +12,8 @@ use bevy::{
 };
 use bevy_seedling::prelude::*;
 
-const SLIDER_TRACK: Color = Color::srgb(0.05, 0.05, 0.05);
-const SLIDER_THUMB: Color = Color::srgb(0.35, 0.75, 0.35);
+const SLIDER_TRACK: Color = Color::oklcha(0.5912, 0.1184, 318.87, 0.8);
+const SLIDER_THUMB: Color = Color::oklcha(0.6088, 0.2417, 356.26, 0.92);
 
 #[derive(Component)]
 struct UISlider;
@@ -63,12 +63,16 @@ fn toggle_menu(
     }
 }
 
-const TEXT_COLOR: Color = Color::Oklcha(Oklcha::new(0.8994, 0.0715, 331.2, 0.98));
+pub const TEXT_COLOR: Color = Color::Oklcha(Oklcha::new(0.8994, 0.0715, 331.2, 0.98));
 
 #[derive(Component)]
 struct Menu;
 
-fn spawn_menu(mut commands: Commands, sound_settings: Single<&VolumeNode, With<SoundEffectsBus>>) {
+fn spawn_menu(
+    mut commands: Commands,
+    sound_settings: Single<&VolumeNode, With<SoundEffectsBus>>,
+    server: Res<AssetServer>,
+) {
     let current_sound_vol = sound_settings.volume.percent();
 
     // Spawn the menu ui elements
@@ -84,31 +88,38 @@ fn spawn_menu(mut commands: Commands, sound_settings: Single<&VolumeNode, With<S
 
     commands.spawn(menu()).with_children(|parent| {
         parent.spawn((
-            Node { ..default() },
+            Node {
+                padding: UiRect::all(px(30)),
+                ..default()
+            },
             children![(
-                Text::new("menu"),
+                Text::new("MENU"),
                 TextColor(TEXT_COLOR),
                 TextFont {
-                    // TODO: lets put in custom font?
-                    font_size: 32.0,
+                    font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                    font_size: 36.0,
                     ..default()
                 },
             )],
         ));
         parent.spawn((
-            Node { ..default() },
+            Node {
+                padding: UiRect::axes(px(40), px(10)),
+                ..default()
+            },
             children![(
                 Text::new("sound"),
                 TextColor(TEXT_COLOR),
                 TextFont {
-                    // TODO: lets put in custom font?
-                    font_size: 24.0,
+                    font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                    font_size: 32.0,
                     ..default()
                 },
             )],
         ));
         parent
             .spawn((Node {
+                padding: UiRect::axes(px(50), px(10)),
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
@@ -120,8 +131,8 @@ fn spawn_menu(mut commands: Commands, sound_settings: Single<&VolumeNode, With<S
                     Text::new("volume"),
                     TextColor(TEXT_COLOR),
                     TextFont {
-                        // TODO: lets put in custom font?
-                        font_size: 16.0,
+                        font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                        font_size: 20.0,
                         ..default()
                     },
                 ),));
@@ -131,8 +142,8 @@ fn spawn_menu(mut commands: Commands, sound_settings: Single<&VolumeNode, With<S
                         Text::new(format!("{current_sound_vol}%")),
                         TextColor(TEXT_COLOR),
                         TextFont {
-                            // TODO: lets put in custom font?
-                            font_size: 16.0,
+                            font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                            font_size: 28.0,
                             ..default()
                         },
                     ),))

@@ -1355,6 +1355,7 @@
 {
 "classname" "npc_sprite"
 "origin" "54 -272 24"
+"text" "ah what up you find yourself among rats. uhhhh you really should leave. why are you here?"
 }
 // entity 3
 {
@@ -1374,9 +1375,12 @@
 {
 "classname" "npc_sprite"
 "origin" "88 -88 24"
+"selectable" "true"
+"text" "please do not speak to this rat...it is so painful :("
 }
 // entity 6
 {
 "classname" "npc_sprite"
 "origin" "-56 -248 24"
+"text" "rat thoughts produce rat words, rat actions, and so forth"
 }
