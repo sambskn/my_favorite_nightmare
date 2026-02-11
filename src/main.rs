@@ -1,6 +1,7 @@
 use crate::ui::{MenuPlugin, MenuState};
 use avian3d::{math::*, prelude::*};
 use bevy::{
+    color::palettes::tailwind::YELLOW_500,
     ecs::{lifecycle::HookContext, world::DeferredWorld},
     input::{common_conditions::input_just_pressed, mouse::AccumulatedMouseMotion},
     prelude::*,
@@ -37,13 +38,8 @@ impl NPCSprite {
             ..default()
         });
         let hover_material = asset_server.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("sprites/rat.png")),
-            base_color: Color::Oklcha(Oklcha {
-                lightness: 0.7483,
-                chroma: 0.2393,
-                hue: 147.32,
-                alpha: 1.0,
-            }),
+            base_color_texture: Some(asset_server.load("sprites/rat2.png")),
+            emissive: YELLOW_500.into(),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
@@ -56,9 +52,9 @@ impl NPCSprite {
                 Mesh3d(rect_mesh),
                 MeshMaterial3d(material.clone()),
                 PhysicsPickable,
-                Collider::from(Cuboid {
-                    half_size: Vec3::new(2., 2., 2.),
-                }),
+                RigidBody::Static,
+                Sensor,
+                Collider::from(Cuboid::default()),
             ))
             .observe(update_material_on::<Pointer<Over>>(hover_material.clone()))
             .observe(update_material_on::<Pointer<Out>>(material.clone()));
@@ -218,14 +214,14 @@ fn spawn_camera(mut commands: Commands) {
             .clone()
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
         RigidBody::Dynamic,
-        Collider::cuboid(0.5, 0.5, 0.5),
+        Collider::cuboid(0.1, 0.5, 0.1),
         TransformInterpolation,
         CollidingEntities::default(),
         LockedAxes::ROTATION_LOCKED,
     ));
 }
 
-const PLAYER_SPEED: f32 = 7.0;
+const PLAYER_SPEED: f32 = 3.5;
 const PLAYER_SPRINT_BOOST: f32 = 3.0;
 const PLAYER_SLOWDOWN_MULT: f32 = 20.0;
 
@@ -360,7 +356,8 @@ fn update_billboards(
     for mut sprite_tf in &mut sprite_query {
         // check diff between current sprite rotation and target
         let current_sprite_rotation = sprite_tf.rotation.clone();
-        let target_tf = cam_tf.clone();
+        let mut target_tf = sprite_tf.clone();
+        target_tf.look_at(cam_tf.translation, Vec3::Y);
         let target_tf_rotation = target_tf.rotation;
         let diff = target_tf_rotation.angle_between(current_sprite_rotation);
         if diff > SPRITE_ROTATE_THRESHOLD {
@@ -374,7 +371,6 @@ fn update_material_on<E: EntityEvent>(
 ) -> impl Fn(On<E>, Query<&mut MeshMaterial3d<StandardMaterial>>) {
     move |trigger, mut query| {
         if let Ok(mut material) = query.get_mut(trigger.event_target()) {
-            info!("doing a mat switch");
             material.0 = new_material.clone();
         }
     }
