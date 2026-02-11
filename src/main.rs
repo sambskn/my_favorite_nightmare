@@ -1,7 +1,6 @@
 use crate::ui::{MenuPlugin, MenuState};
 use avian3d::{math::*, prelude::*};
 use bevy::{
-    color::palettes::tailwind::YELLOW_500,
     ecs::{lifecycle::HookContext, world::DeferredWorld},
     input::{common_conditions::input_just_pressed, mouse::AccumulatedMouseMotion},
     prelude::*,
