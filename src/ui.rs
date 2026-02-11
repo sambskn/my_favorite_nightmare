@@ -1,7 +1,7 @@
 use bevy::{
     input_focus::{
         InputDispatchPlugin,
-        tab_navigation::{TabGroup, TabIndex, TabNavigationPlugin},
+        tab_navigation::{TabIndex, TabNavigationPlugin},
     },
     picking::hover::Hovered,
     prelude::*,
@@ -10,6 +10,7 @@ use bevy::{
         UiWidgetsPlugins, observe, slider_self_update,
     },
 };
+use bevy_seedling::prelude::*;
 
 const SLIDER_TRACK: Color = Color::srgb(0.05, 0.05, 0.05);
 const SLIDER_THUMB: Color = Color::srgb(0.35, 0.75, 0.35);
@@ -20,12 +21,23 @@ struct UISlider;
 #[derive(Component)]
 struct UISliderThumb;
 
+#[derive(Component)]
+struct ValueLabel(Entity);
+
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.insert_state(MenuState::InGame)
             .add_plugins((UiWidgetsPlugins, InputDispatchPlugin, TabNavigationPlugin))
-            .add_systems(Update, toggle_menu)
+            .add_systems(
+                Update,
+                (
+                    toggle_menu,
+                    update_slider_visuals,
+                    update_value_labels,
+                    update_volume,
+                ),
+            )
             .add_systems(OnEnter(MenuState::Menu), spawn_menu)
             .add_systems(OnEnter(MenuState::InGame), kill_menu);
     }
@@ -56,7 +68,9 @@ const TEXT_COLOR: Color = Color::Oklcha(Oklcha::new(0.8994, 0.0715, 331.2, 0.98)
 #[derive(Component)]
 struct Menu;
 
-fn spawn_menu(mut commands: Commands) {
+fn spawn_menu(mut commands: Commands, sound_settings: Single<&VolumeNode, With<SoundEffectsBus>>) {
+    let current_sound_vol = sound_settings.volume.percent();
+
     // Spawn the menu ui elements
     commands.spawn((
         Camera2d,
@@ -68,7 +82,69 @@ fn spawn_menu(mut commands: Commands) {
         Menu,
     ));
 
-    commands.spawn(menu());
+    commands.spawn(menu()).with_children(|parent| {
+        parent.spawn((
+            Node { ..default() },
+            children![(
+                Text::new("menu"),
+                TextColor(TEXT_COLOR),
+                TextFont {
+                    // TODO: lets put in custom font?
+                    font_size: 32.0,
+                    ..default()
+                },
+            )],
+        ));
+        parent.spawn((
+            Node { ..default() },
+            children![(
+                Text::new("sound"),
+                TextColor(TEXT_COLOR),
+                TextFont {
+                    // TODO: lets put in custom font?
+                    font_size: 24.0,
+                    ..default()
+                },
+            )],
+        ));
+        parent
+            .spawn((Node {
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                width: percent(100),
+                ..default()
+            },))
+            .with_children(|subparent| {
+                subparent.spawn(((
+                    Text::new("volume"),
+                    TextColor(TEXT_COLOR),
+                    TextFont {
+                        // TODO: lets put in custom font?
+                        font_size: 16.0,
+                        ..default()
+                    },
+                ),));
+
+                let volume_label = subparent
+                    .spawn(((
+                        Text::new(format!("{current_sound_vol}%")),
+                        TextColor(TEXT_COLOR),
+                        TextFont {
+                            // TODO: lets put in custom font?
+                            font_size: 16.0,
+                            ..default()
+                        },
+                    ),))
+                    .id();
+
+                subparent.spawn((
+                    horizontal_slider(current_sound_vol),
+                    ValueLabel(volume_label),
+                    observe(slider_self_update),
+                ));
+            });
+    });
 }
 
 fn kill_menu(menu_entity: Query<Entity, With<Menu>>, mut commands: Commands) {
@@ -97,65 +173,11 @@ fn menu() -> impl Bundle {
         BackgroundColor {
             0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
         },
-        children![
-            (
-                Node { ..default() },
-                children![(
-                    Text::new("menu"),
-                    TextColor(TEXT_COLOR),
-                    TextFont {
-                        // TODO: lets put in custom font?
-                        font_size: 28.0,
-                        ..default()
-                    },
-                )],
-            ),
-            (
-                Node { ..default() },
-                children![(
-                    Text::new("sound"),
-                    TextColor(TEXT_COLOR),
-                    TextFont {
-                        // TODO: lets put in custom font?
-                        font_size: 16.0,
-                        ..default()
-                    },
-                )],
-            ),
-            (
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Center,
-                    width: percent(100),
-                    ..default()
-                },
-                children![
-                    (
-                        Text::new("volume"),
-                        TextColor(TEXT_COLOR),
-                        TextFont {
-                            // TODO: lets put in custom font?
-                            font_size: 14.0,
-                            ..default()
-                        },
-                    ),
-                    (
-                        Text::new("100%"),
-                        TextColor(TEXT_COLOR),
-                        TextFont {
-                            // TODO: lets put in custom font?
-                            font_size: 14.0,
-                            ..default()
-                        },
-                    )
-                ],
-            )
-        ],
+        children![],
     )
 }
 
-fn horizontal_slider() -> impl Bundle {
+fn horizontal_slider(initial_val: f32) -> impl Bundle {
     (
         Node {
             display: Display::Flex,
@@ -172,7 +194,7 @@ fn horizontal_slider() -> impl Bundle {
         Slider {
             track_click: TrackClick::Snap,
         },
-        SliderValue(50.0),
+        SliderValue(initial_val),
         SliderRange::new(0.0, 100.0),
         TabIndex(0),
         Children::spawn((
@@ -228,23 +250,19 @@ fn update_slider_visuals(
                 Changed<Hovered>,
                 Changed<CoreSliderDragState>,
             )>,
-            With<DemoSlider>,
+            With<UISlider>,
         ),
     >,
     children: Query<&Children>,
-    mut thumbs: Query<(&mut Node, &mut BackgroundColor, Has<DemoSliderThumb>), Without<DemoSlider>>,
+    mut thumbs: Query<(&mut Node, &mut BackgroundColor, Has<UISliderThumb>), Without<UISlider>>,
 ) {
-    for (slider_ent, value, range, hovered, drag_state, is_vertical) in sliders.iter() {
+    for (slider_ent, value, range, hovered, drag_state) in sliders.iter() {
         for child in children.iter_descendants(slider_ent) {
             if let Ok((mut thumb_node, mut thumb_bg, is_thumb)) = thumbs.get_mut(child)
                 && is_thumb
             {
                 let position = range.thumb_position(value.0) * 100.0;
-                if is_vertical {
-                    thumb_node.bottom = percent(position);
-                } else {
-                    thumb_node.left = percent(position);
-                }
+                thumb_node.left = percent(position);
 
                 let is_active = hovered.0 | drag_state.dragging;
                 thumb_bg.0 = if is_active {
@@ -258,12 +276,21 @@ fn update_slider_visuals(
 }
 
 fn update_value_labels(
-    sliders: Query<(&SliderValue, &ValueLabel), (Changed<SliderValue>, With<DemoSlider>)>,
+    sliders: Query<(&SliderValue, &ValueLabel), (Changed<SliderValue>, With<UISlider>)>,
     mut texts: Query<&mut Text>,
 ) {
     for (value, label) in sliders.iter() {
         if let Ok(mut text) = texts.get_mut(label.0) {
-            **text = format!("{:.0}", value.0);
+            **text = format!("{:.0}%", value.0);
         }
+    }
+}
+
+fn update_volume(
+    sliders: Query<&SliderValue, (Changed<SliderValue>, With<UISlider>)>,
+    mut sound_settings: Single<&mut VolumeNode, With<SoundEffectsBus>>,
+) {
+    for value in sliders.iter() {
+        sound_settings.as_mut().set_percent(value.0);
     }
 }

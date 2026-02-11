@@ -186,9 +186,13 @@ impl Plugin for CameraPlugin {
             .add_systems(
                 Update,
                 (
-                    update_camera_transform,
-                    capture_cursor.run_if(input_just_pressed(MouseButton::Left)),
-                    release_cursor.run_if(input_just_pressed(KeyCode::Escape)),
+                    update_camera_transform.run_if(in_state(MenuState::InGame)),
+                    capture_cursor
+                        .run_if(input_just_pressed(MouseButton::Left))
+                        .run_if(in_state(MenuState::InGame)),
+                    release_cursor
+                        .run_if(input_just_pressed(KeyCode::Escape))
+                        .run_if(in_state(MenuState::InGame)),
                 ),
             );
 
@@ -233,7 +237,9 @@ fn player_camera_movement(
     for (mut lin_vel, camera) in &mut query {
         // build movement vec from current inputs
         let mut movement_vel = Vec3::ZERO;
-
+        if input.pressed(KeyCode::KeyW) {
+            movement_vel += Vec3::NEG_Z
+        }
         if input.pressed(KeyCode::KeyS) {
             movement_vel += Vec3::Z
         }
@@ -335,7 +341,10 @@ fn spawn_test_map(mut commands: Commands, asset_server: Res<AssetServer>) {
 struct BillboardSpritePlugin;
 impl Plugin for BillboardSpritePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_billboards);
+        app.add_systems(
+            Update,
+            update_billboards.run_if(in_state(MenuState::InGame)),
+        );
     }
 }
 
