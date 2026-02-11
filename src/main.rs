@@ -39,7 +39,7 @@ impl NPCSprite {
         });
         let hover_material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/rat2.png")),
-            emissive: YELLOW_500.into(),
+            emissive_texture: Some(asset_server.load("sprites/rat2_emissive.png")),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
