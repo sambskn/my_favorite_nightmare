@@ -282,7 +282,9 @@ fn on_stinger_finished(
     // Start level bg, looping
     // TODO: Do lookup for level?
     commands.spawn((
-        SamplePlayer::new(server.load("sounds/bgm1.wav")).looping(),
+        SamplePlayer::new(server.load("sounds/bgm1.wav"))
+            .with_volume(Volume::from_percent(50.))
+            .looping(),
         LevelStuff,
     ));
 }
