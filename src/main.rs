@@ -109,6 +109,64 @@ impl NPCSprite {
     }
 }
 
+// point_class marks it for bevy_trenchbroom
+// - adding a model path is for display in trenchbroom, not pulled for bevy side atm
+// component is the bevy macro used to set up the hook for spawning our billboarded sprite
+// (calling the on_add fn below)
+#[point_class(
+    model({ path: "sprites/hole.png", scale: 0.5 }),
+)]
+#[component(on_add = Self::on_add)]
+struct HoleSprite;
+
+impl HoleSprite {
+    pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        let Some(asset_server) = world.get_resource::<AssetServer>() else {
+            return;
+        };
+
+        let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.42, 0.42)));
+        let material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/hole.png")),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
+        let hover_material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/hole.png")),
+            emissive_texture: Some(asset_server.load("sprites/hole_emissive.png")),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
+        world
+            .commands()
+            .entity(ctx.entity)
+            .insert((
+                Mesh3d(rect_mesh),
+                MeshMaterial3d(material.clone()),
+                PhysicsPickable,
+                RigidBody::Static,
+                Sensor,
+                Collider::from(Cuboid::default()),
+                FocusDetails {
+                    selectable: true,
+                    text: None,
+                },
+            ))
+            .observe(update_material_on::<Pointer<Over>>(
+                hover_material.clone(),
+                Selection::On,
+            ))
+            .observe(update_material_on::<Pointer<Out>>(
+                material.clone(),
+                Selection::Off,
+            ));
+    }
+}
+
 const GRAVITY_MULT: f32 = 160.0;
 
 fn main() {
@@ -391,7 +449,8 @@ impl Plugin for BillboardSpritePlugin {
             .add_systems(
                 Update,
                 (
-                    update_billboards.run_if(in_state(MenuState::InGame)),
+                    update_billboards::<NPCSprite>.run_if(in_state(MenuState::InGame)),
+                    update_billboards::<HoleSprite>.run_if(in_state(MenuState::InGame)),
                     show_text_on_highlighted_click
                         .run_if(in_state(MenuState::InGame))
                         .run_if(input_just_pressed(MouseButton::Left)),
@@ -402,9 +461,9 @@ impl Plugin for BillboardSpritePlugin {
 
 const SPRITE_ROTATE_THRESHOLD: f32 = 0.0001;
 
-fn update_billboards(
-    camera_query: Query<&Transform, (With<Camera3d>, Without<NPCSprite>)>,
-    mut sprite_query: Query<&mut Transform, (With<NPCSprite>, Without<Camera3d>)>,
+fn update_billboards<C: Component>(
+    camera_query: Query<&Transform, (With<Camera3d>, Without<C>)>,
+    mut sprite_query: Query<&mut Transform, (With<C>, Without<Camera3d>)>,
 ) {
     let Ok(cam_tf) = camera_query.single() else {
         return;
@@ -421,6 +480,7 @@ fn update_billboards(
         }
     }
 }
+
 #[derive(Resource)]
 struct PlayerFocus(Option<FocusDetails>);
 

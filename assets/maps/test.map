@@ -1384,3 +1384,8 @@
 "origin" "-56 -248 24"
 "text" "rat thoughts produce rat words, rat actions, and so forth"
 }
+// entity 7
+{
+"classname" "hole_sprite"
+"origin" "-88 -8 24"
+}
