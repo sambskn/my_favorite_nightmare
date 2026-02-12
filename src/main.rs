@@ -7,6 +7,7 @@ use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
     input::{common_conditions::input_just_pressed, mouse::AccumulatedMouseMotion},
     prelude::*,
+    scene::SceneInstance,
     window::{CursorGrabMode, CursorOptions},
 };
 use bevy_seedling::prelude::*;
@@ -114,6 +115,7 @@ impl NPCSprite {
                     text,
                     focus_type: FocusType::NPC,
                 },
+                LevelStuff,
             ))
             .observe(update_material_on::<Pointer<Over>>(
                 hover_material.clone(),
@@ -185,6 +187,7 @@ impl HoleSprite {
                     text: Some(hole_target),
                     focus_type: FocusType::Hole,
                 },
+                LevelStuff,
             ))
             .observe(update_material_on::<Pointer<Over>>(
                 hover_material.clone(),
@@ -198,6 +201,10 @@ impl HoleSprite {
 }
 
 const GRAVITY_MULT: f32 = 160.0;
+
+// marker component for stuff to destroy between levels
+#[derive(Component)]
+struct LevelStuff;
 
 fn main() {
     let mut app = App::new();
@@ -245,9 +252,15 @@ fn main() {
 struct AudioPlugin;
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, play_level_intro_stinger)
-            .add_systems(FixedUpdate, play_walking_noises)
-            .add_observer(on_stinger_finished);
+        app.add_systems(
+            OnTransition {
+                exited: GameState::Loading,
+                entered: GameState::InGame,
+            },
+            play_level_intro_stinger,
+        )
+        .add_systems(FixedUpdate, play_walking_noises)
+        .add_observer(on_stinger_finished);
     }
 }
 
@@ -267,7 +280,11 @@ fn on_stinger_finished(
     mut commands: Commands,
 ) {
     // Start level bg, looping
-    commands.spawn(SamplePlayer::new(server.load("sounds/bgm1.wav")).looping());
+    // TODO: Do lookup for level?
+    commands.spawn((
+        SamplePlayer::new(server.load("sounds/bgm1.wav")).looping(),
+        LevelStuff,
+    ));
 }
 
 #[derive(Component)]
@@ -370,6 +387,7 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
         TransformInterpolation,
         CollidingEntities::default(),
         LockedAxes::ROTATION_LOCKED,
+        LevelStuff,
     ));
 }
 
@@ -565,6 +583,9 @@ fn handle_focus_click(
     highlighted: Res<PlayerFocus>,
     text_box_query: Query<Entity, With<TextBox>>,
     mut commands: Commands,
+    mut next_state: ResMut<NextState<GameState>>,
+    scene: Single<Entity, With<SceneInstance>>,
+    level_stuff: Query<Entity, With<LevelStuff>>,
     server: Res<AssetServer>,
 ) {
     // if textbox exists, make it go away (dirty)
@@ -580,7 +601,17 @@ fn handle_focus_click(
                 // Load new level
                 if let Some(next_level) = &sprite_deets.text {
                     if next_level.len() > 0 {
-                        info!("Would go into this hole {:?}", next_level);
+                        info!("Going into this hole {:?}", next_level);
+                        // despawn old level
+                        for stuff_ent in &level_stuff {
+                            commands.entity(stuff_ent).despawn();
+                        }
+                        commands.entity(*scene).despawn();
+                        // set game state to loading
+                        next_state.set(GameState::Loading);
+                        // kick off load of new level
+                        let new_level_asset = format!("maps/{next_level}#Scene");
+                        commands.spawn(SceneRoot(server.load(new_level_asset)));
                     }
                 }
             }
@@ -666,6 +697,7 @@ fn update_action_text(
                     0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 0.9)),
                 },
                 ActionText,
+                LevelStuff,
                 children![(
                     Text::new(text),
                     TextColor(TEXT_COLOR),

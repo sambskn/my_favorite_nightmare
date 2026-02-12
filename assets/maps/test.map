@@ -1388,7 +1388,7 @@
 {
 "classname" "hole_sprite"
 "origin" "-88 -8 24"
-"hole_target" "test.map"
+"hole_target" "hall.map"
 }
 // entity 8
 {
