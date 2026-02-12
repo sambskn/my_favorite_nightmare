@@ -10,7 +10,10 @@ use bevy::{
         UiWidgetsPlugins, observe, slider_self_update,
     },
 };
+use bevy_persistent::prelude::*;
 use bevy_seedling::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 const SLIDER_TRACK: Color = Color::oklcha(0.5912, 0.1184, 318.87, 0.8);
 const SLIDER_THUMB: Color = Color::oklcha(0.6088, 0.2417, 356.26, 0.92);
@@ -24,11 +27,31 @@ struct UISliderThumb;
 #[derive(Component)]
 struct ValueLabel(Entity);
 
+// Settings resource to persist
+#[derive(Default, Resource, Serialize, Deserialize, Clone)]
+struct GameSettings {
+    sound_volume: f32,
+}
+
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
+        // Setup persistent settings
+        let settings_dir = dirs::config_dir()
+            .map(|native_config_dir| native_config_dir.join(env!("CARGO_PKG_NAME")))
+            .unwrap_or(Path::new("local").join("config"));
         app.insert_state(MenuState::InGame)
+            .insert_resource(
+                Persistent::<GameSettings>::builder()
+                    .name("game settings")
+                    .format(StorageFormat::Toml)
+                    .path(settings_dir.join("settings.toml"))
+                    .default(GameSettings { sound_volume: 50.0 })
+                    .build()
+                    .expect("failed to initialize game settings"),
+            )
             .add_plugins((UiWidgetsPlugins, InputDispatchPlugin, TabNavigationPlugin))
+            .add_systems(Startup, load_initial_settings)
             .add_systems(
                 Update,
                 (
@@ -36,6 +59,7 @@ impl Plugin for MenuPlugin {
                     update_slider_visuals,
                     update_value_labels,
                     update_volume,
+                    save_settings_on_change,
                 ),
             )
             .add_systems(OnEnter(MenuState::Menu), spawn_menu)
@@ -303,5 +327,26 @@ fn update_volume(
 ) {
     for value in sliders.iter() {
         sound_settings.as_mut().set_percent(value.0);
+    }
+}
+
+// Load settings on startup and apply to audio
+fn load_initial_settings(
+    settings: Res<Persistent<GameSettings>>,
+    mut sound_settings: Single<&mut VolumeNode, With<SoundEffectsBus>>,
+) {
+    // set sound volume
+    sound_settings.as_mut().set_percent(settings.sound_volume);
+}
+
+fn save_settings_on_change(
+    sliders: Query<&SliderValue, (Changed<SliderValue>, With<UISlider>)>,
+    mut settings: ResMut<Persistent<GameSettings>>,
+) {
+    for value in sliders.iter() {
+        settings.sound_volume = value.0;
+        if let Err(e) = settings.persist() {
+            error!("Failed to save settings: {}", e);
+        }
     }
 }
