@@ -15,6 +15,8 @@ use bevy_seedling::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use crate::fonts::SANS_FONT_PATH;
+
 const SLIDER_TRACK: Color = Color::oklcha(0.5912, 0.1184, 318.87, 0.8);
 const SLIDER_THUMB: Color = Color::oklcha(0.6088, 0.2417, 356.26, 0.92);
 
@@ -120,7 +122,7 @@ fn spawn_menu(
                 Text::new("MENU"),
                 TextColor(TEXT_COLOR),
                 TextFont {
-                    font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                    font: server.load(SANS_FONT_PATH),
                     font_size: 36.0,
                     ..default()
                 },
@@ -135,7 +137,7 @@ fn spawn_menu(
                 Text::new("sound"),
                 TextColor(TEXT_COLOR),
                 TextFont {
-                    font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                    font: server.load(SANS_FONT_PATH),
                     font_size: 32.0,
                     ..default()
                 },
@@ -155,7 +157,7 @@ fn spawn_menu(
                     Text::new("volume"),
                     TextColor(TEXT_COLOR),
                     TextFont {
-                        font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                        font: server.load(SANS_FONT_PATH),
                         font_size: 20.0,
                         ..default()
                     },
@@ -166,7 +168,7 @@ fn spawn_menu(
                         Text::new(format!("{current_sound_vol}%")),
                         TextColor(TEXT_COLOR),
                         TextFont {
-                            font: server.load("fonts/OTNeueMontreal-BoldItalicSqueezed.ttf"),
+                            font: server.load(SANS_FONT_PATH),
                             font_size: 28.0,
                             ..default()
                         },

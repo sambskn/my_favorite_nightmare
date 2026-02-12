@@ -1,4 +1,7 @@
-use crate::ui::{MenuPlugin, MenuState, TEXT_COLOR};
+use crate::{
+    fonts::{SANS_FONT_PATH, SERIF_FONT_PATH},
+    ui::{MenuPlugin, MenuState, TEXT_COLOR},
+};
 use avian3d::{math::*, prelude::*};
 use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
@@ -11,6 +14,7 @@ use bevy_trenchbroom::prelude::*;
 use bevy_trenchbroom_avian::AvianPhysicsBackend;
 use rand::seq::IndexedRandom;
 
+mod fonts;
 mod ui;
 
 // point_class marks it for bevy_trenchbroom
@@ -35,7 +39,7 @@ impl Default for NPCSprite {
 }
 
 #[derive(Component, Clone)]
-struct SpriteDetails {
+struct FocusDetails {
     pub selectable: bool,
     pub text: Option<String>,
 }
@@ -92,7 +96,7 @@ impl NPCSprite {
                 RigidBody::Static,
                 Sensor,
                 Collider::from(Cuboid::default()),
-                SpriteDetails { selectable, text },
+                FocusDetails { selectable, text },
             ))
             .observe(update_material_on::<Pointer<Over>>(
                 hover_material.clone(),
@@ -234,6 +238,7 @@ impl Plugin for CameraPlugin {
                     release_cursor
                         .run_if(input_just_pressed(KeyCode::Escape))
                         .run_if(in_state(MenuState::InGame)),
+                    update_action_text.run_if(in_state(MenuState::InGame)),
                 ),
             );
 
@@ -382,7 +387,7 @@ fn spawn_test_map(mut commands: Commands, asset_server: Res<AssetServer>) {
 struct BillboardSpritePlugin;
 impl Plugin for BillboardSpritePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource::<HighlightedSprite>(HighlightedSprite(None))
+        app.insert_resource::<PlayerFocus>(PlayerFocus(None))
             .add_systems(
                 Update,
                 (
@@ -417,16 +422,13 @@ fn update_billboards(
     }
 }
 #[derive(Resource)]
-struct HighlightedSprite(Option<SpriteDetails>);
+struct PlayerFocus(Option<FocusDetails>);
 
 fn update_material_on<E: EntityEvent>(
     new_material: Handle<StandardMaterial>,
     selection_mode: Selection,
-) -> impl Fn(
-    On<E>,
-    Query<(&mut MeshMaterial3d<StandardMaterial>, &SpriteDetails)>,
-    ResMut<HighlightedSprite>,
-) {
+) -> impl Fn(On<E>, Query<(&mut MeshMaterial3d<StandardMaterial>, &FocusDetails)>, ResMut<PlayerFocus>)
+{
     move |trigger, mut query, mut highlighted| {
         if let Ok((mut material, sprite_deets)) = query.get_mut(trigger.event_target()) {
             // only swap material if sprite is selectable
@@ -442,7 +444,7 @@ fn update_material_on<E: EntityEvent>(
 }
 
 fn show_text_on_highlighted_click(
-    highlighted: Res<HighlightedSprite>,
+    highlighted: Res<PlayerFocus>,
     text_box_query: Query<Entity, With<TextBox>>,
     mut commands: Commands,
     server: Res<AssetServer>,
@@ -473,7 +475,7 @@ fn show_text_on_highlighted_click(
                     Text::new(sprite_text),
                     TextColor(TEXT_COLOR),
                     TextFont {
-                        font: server.load("fonts/OTBrut-Regular.ttf"),
+                        font: server.load(SERIF_FONT_PATH),
                         font_size: 18.0,
                         ..default()
                     },
@@ -485,3 +487,68 @@ fn show_text_on_highlighted_click(
 
 #[derive(Component)]
 struct TextBox;
+
+#[derive(Component)]
+struct ActionText;
+
+fn update_action_text(
+    existing_action_text: Query<Entity, With<ActionText>>,
+    focus: Res<PlayerFocus>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
+) {
+    let current_focus = focus.0.clone();
+
+    // Check if action text exists
+    let action_text_exists = !existing_action_text.is_empty();
+
+    match (action_text_exists, current_focus.is_some()) {
+        // Exists but shouldn't - despawn it
+        (true, false) => {
+            for ent in &existing_action_text {
+                commands.entity(ent).despawn();
+            }
+        }
+        // Doesn't exist but should - spawn it
+        (false, true) => {
+            commands.spawn((
+                Node {
+                    top: vh(50),
+                    left: vw(50),
+                    position_type: PositionType::Absolute,
+                    display: Display::Flex,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    padding: UiRect::axes(px(20), px(10)),
+                    ..default()
+                },
+                BackgroundColor {
+                    0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 0.9)),
+                },
+                ActionText,
+                children![(
+                    Text::new(get_action_str()),
+                    TextColor(TEXT_COLOR),
+                    TextFont {
+                        font: server.load(SANS_FONT_PATH),
+                        font_size: 34.0,
+                        ..default()
+                    },
+                )],
+            ));
+        }
+        _ => {}
+    }
+}
+
+fn get_action_str() -> String {
+    let mut rng = rand::rng();
+    let words = vec![
+        "chat up this rodent!",
+        "kiss this rat! with language!",
+        "aaaaaah rat",
+        "TALK",
+        "TALK to POOPY rat",
+    ];
+    words.choose(&mut rng).unwrap().to_string()
+}
