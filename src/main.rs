@@ -340,6 +340,13 @@ impl Plugin for CameraPlugin {
             spawn_camera,
         )
         .add_systems(
+            OnTransition {
+                exited: GameState::InGame,
+                entered: GameState::Loading,
+            },
+            reset_focus,
+        )
+        .add_systems(
             FixedUpdate,
             (
                 (player_camera_movement, debug_commands_and_oob_reset)
@@ -364,6 +371,10 @@ impl Plugin for CameraPlugin {
         // Print info message with control info to console
         info!("\n\n\nControls:\n\tWASD => move, Mouse => look, Space => 'jump'\n\n");
     }
+}
+
+fn reset_focus(mut focus: ResMut<PlayerFocus>) {
+    focus.0 = None;
 }
 
 #[derive(Component)]
