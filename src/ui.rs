@@ -42,7 +42,7 @@ impl Plugin for MenuPlugin {
         let settings_dir = dirs::config_dir()
             .map(|native_config_dir| native_config_dir.join(env!("CARGO_PKG_NAME")))
             .unwrap_or(Path::new("local").join("config"));
-        app.insert_state(MenuState::InGame)
+        app.insert_state(GameState::Loading) // initial loading state will get set to in game once player location is initially set
             .insert_resource(
                 Persistent::<GameSettings>::builder()
                     .name("game settings")
@@ -64,27 +64,29 @@ impl Plugin for MenuPlugin {
                     save_settings_on_change,
                 ),
             )
-            .add_systems(OnEnter(MenuState::Menu), spawn_menu)
-            .add_systems(OnEnter(MenuState::InGame), kill_menu);
+            .add_systems(OnEnter(GameState::Menu), spawn_menu)
+            .add_systems(OnExit(GameState::Menu), kill_menu);
     }
 }
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
-pub enum MenuState {
+pub enum GameState {
     #[default]
+    Loading,
     Menu,
     InGame,
 }
 
 fn toggle_menu(
     input: Res<ButtonInput<KeyCode>>,
-    state: Res<State<MenuState>>,
-    mut next_state: ResMut<NextState<MenuState>>,
+    state: Res<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if input.just_released(KeyCode::Escape) {
         *next_state = match state.get() {
-            MenuState::InGame => NextState::Pending(MenuState::Menu),
-            MenuState::Menu => NextState::Pending(MenuState::InGame),
+            GameState::InGame => NextState::Pending(GameState::Menu),
+            GameState::Menu => NextState::Pending(GameState::InGame),
+            GameState::Loading => NextState::Pending(GameState::Loading),
         }
     }
 }

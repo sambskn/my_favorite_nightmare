@@ -1,6 +1,6 @@
 use crate::{
     fonts::{SANS_FONT_PATH, SERIF_FONT_PATH},
-    ui::{MenuPlugin, MenuState, TEXT_COLOR},
+    ui::{GameState, MenuPlugin, TEXT_COLOR},
 };
 use avian3d::{math::*, prelude::*};
 use bevy::{
@@ -16,6 +16,12 @@ use rand::seq::IndexedRandom;
 
 mod fonts;
 mod ui;
+
+// not visible to player in game, used for marking player start loc in level
+#[point_class(
+    model({ path: "sprites/start.png", scale: 0.5 }),
+)]
+struct PlayerStart;
 
 // point_class marks it for bevy_trenchbroom
 // - adding a model path is for display in trenchbroom, not pulled for bevy side atm
@@ -128,13 +134,25 @@ impl NPCSprite {
     model({ path: "sprites/hole.png", scale: 0.5 }),
 )]
 #[component(on_add = Self::on_add)]
-struct HoleSprite;
+struct HoleSprite {
+    pub hole_target: String,
+}
+impl Default for HoleSprite {
+    fn default() -> Self {
+        HoleSprite {
+            hole_target: String::new(),
+        }
+    }
+}
 
 impl HoleSprite {
     pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
         let Some(asset_server) = world.get_resource::<AssetServer>() else {
             return;
         };
+
+        let hole_sprite = world.get::<HoleSprite>(ctx.entity).unwrap();
+        let hole_target = hole_sprite.hole_target.clone();
 
         let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.42, 0.42)));
         let material = asset_server.add(StandardMaterial {
@@ -164,7 +182,7 @@ impl HoleSprite {
                 Collider::from(Cuboid::default()),
                 FocusDetails {
                     selectable: true,
-                    text: None,
+                    text: Some(hole_target),
                     focus_type: FocusType::Hole,
                 },
             ))
@@ -288,29 +306,43 @@ fn get_random_walking_sound_path() -> String {
     noises.choose(&mut rng).unwrap().to_string()
 }
 
+const DEFAULT_PLAYER_START_LOC: Vec3 = Vec3::new(1.375, 0.9, 0.6);
+
 // Plugin that spawns the camera.
 struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_camera)
-            .add_systems(
-                FixedUpdate,
+        app.insert_resource::<LevelStartLocation>(LevelStartLocation(
+            DEFAULT_PLAYER_START_LOC.clone(),
+        ))
+        .add_systems(
+            OnTransition {
+                exited: GameState::Loading,
+                entered: GameState::InGame,
+            },
+            spawn_camera,
+        )
+        .add_systems(
+            FixedUpdate,
+            (
                 (player_camera_movement, debug_commands_and_oob_reset)
-                    .run_if(in_state(MenuState::InGame)),
-            )
-            .add_systems(
-                Update,
-                (
-                    update_camera_transform.run_if(in_state(MenuState::InGame)),
-                    capture_cursor
-                        .run_if(input_just_pressed(MouseButton::Left))
-                        .run_if(in_state(MenuState::InGame)),
-                    release_cursor
-                        .run_if(input_just_pressed(KeyCode::Escape))
-                        .run_if(in_state(MenuState::InGame)),
-                    update_action_text.run_if(in_state(MenuState::InGame)),
-                ),
-            );
+                    .run_if(in_state(GameState::InGame)),
+                update_player_start_location.run_if(in_state(GameState::Loading)),
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                update_camera_transform.run_if(in_state(GameState::InGame)),
+                capture_cursor
+                    .run_if(input_just_pressed(MouseButton::Left))
+                    .run_if(in_state(GameState::InGame)),
+                release_cursor
+                    .run_if(input_just_pressed(KeyCode::Escape))
+                    .run_if(in_state(GameState::InGame)),
+                update_action_text.run_if(in_state(GameState::InGame)),
+            ),
+        );
 
         // Print info message with control info to console
         info!("\n\n\nControls:\n\tWASD => move, Mouse => look, Space => 'jump'\n\n");
@@ -320,9 +352,10 @@ impl Plugin for CameraPlugin {
 #[derive(Component)]
 struct PlayerCamera;
 
-const PLAYER_START_LOC: Transform = Transform::from_xyz(1.375, 0.9, 0.6);
+#[derive(Resource, Clone, Debug)]
+struct LevelStartLocation(Vec3);
 
-fn spawn_camera(mut commands: Commands) {
+fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
     commands.spawn((
         PlayerCamera,
         Camera3d::default(),
@@ -330,8 +363,7 @@ fn spawn_camera(mut commands: Commands) {
             order: 1,
             ..default()
         },
-        PLAYER_START_LOC
-            .clone()
+        Transform::from_xyz(level_start.0.x, level_start.0.y, level_start.0.z)
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
         RigidBody::Dynamic,
         Collider::cuboid(0.1, 0.5, 0.1),
@@ -395,18 +427,32 @@ fn player_camera_movement(
 const MIN_Y: f32 = -5.;
 fn debug_commands_and_oob_reset(
     mut player_tf_query: Query<&mut Transform, With<PlayerCamera>>,
+    level_start: Res<LevelStartLocation>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     for mut player_tf in &mut player_tf_query {
         // reset player location to start transform
         // also do it if we're way oob )happens on wasm sometimes
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
-            player_tf.translation = PLAYER_START_LOC.translation;
+            player_tf.translation = level_start.0.clone();
         }
         // Log current player transform
         if input.pressed(KeyCode::KeyL) {
             info!("Player Loc: {:?}", player_tf);
         }
+    }
+}
+
+fn update_player_start_location(
+    new_player_start: Query<(&PlayerStart, &Transform), Added<Transform>>,
+    mut level_start: ResMut<LevelStartLocation>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    for (_new_start, start_transform) in &new_player_start {
+        info!("Saving level start loc: {:?}", start_transform);
+        level_start.0 = start_transform.translation;
+        // Also set state to loaded (is this the right place to do this lol?)
+        next_state.set(GameState::InGame);
     }
 }
 
@@ -461,10 +507,10 @@ impl Plugin for BillboardSpritePlugin {
             .add_systems(
                 Update,
                 (
-                    update_billboards::<NPCSprite>.run_if(in_state(MenuState::InGame)),
-                    update_billboards::<HoleSprite>.run_if(in_state(MenuState::InGame)),
-                    show_text_on_highlighted_click
-                        .run_if(in_state(MenuState::InGame))
+                    update_billboards::<NPCSprite>.run_if(in_state(GameState::InGame)),
+                    update_billboards::<HoleSprite>.run_if(in_state(GameState::InGame)),
+                    handle_focus_click
+                        .run_if(in_state(GameState::InGame))
                         .run_if(input_just_pressed(MouseButton::Left)),
                 ),
             );
@@ -515,7 +561,7 @@ fn update_material_on<E: EntityEvent>(
     }
 }
 
-fn show_text_on_highlighted_click(
+fn handle_focus_click(
     highlighted: Res<PlayerFocus>,
     text_box_query: Query<Entity, With<TextBox>>,
     mut commands: Commands,
@@ -529,30 +575,42 @@ fn show_text_on_highlighted_click(
     }
 
     if let Some(sprite_deets) = &highlighted.0 {
-        if let Some(sprite_text) = &sprite_deets.text {
-            commands.spawn((
-                Node {
-                    position_type: PositionType::Absolute,
-                    bottom: vh(10),
-                    left: vw(15),
-                    right: vw(15),
-                    padding: UiRect::all(px(20)),
-                    ..default()
-                },
-                TextBox,
-                BackgroundColor {
-                    0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
-                },
-                children![(
-                    Text::new(sprite_text),
-                    TextColor(TEXT_COLOR),
-                    TextFont {
-                        font: server.load(SERIF_FONT_PATH),
-                        font_size: 18.0,
-                        ..default()
-                    },
-                )],
-            ));
+        match sprite_deets.focus_type {
+            FocusType::Hole => {
+                // Load new level
+                if let Some(next_level) = &sprite_deets.text {
+                    if next_level.len() > 0 {
+                        info!("Would go into this hole {:?}", next_level);
+                    }
+                }
+            }
+            FocusType::NPC => {
+                if let Some(sprite_text) = &sprite_deets.text {
+                    commands.spawn((
+                        Node {
+                            position_type: PositionType::Absolute,
+                            bottom: vh(10),
+                            left: vw(15),
+                            right: vw(15),
+                            padding: UiRect::all(px(20)),
+                            ..default()
+                        },
+                        TextBox,
+                        BackgroundColor {
+                            0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
+                        },
+                        children![(
+                            Text::new(sprite_text),
+                            TextColor(TEXT_COLOR),
+                            TextFont {
+                                font: server.load(SERIF_FONT_PATH),
+                                font_size: 18.0,
+                                ..default()
+                            },
+                        )],
+                    ));
+                }
+            }
         }
     }
 }

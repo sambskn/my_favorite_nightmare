@@ -1388,4 +1388,18 @@
 {
 "classname" "hole_sprite"
 "origin" "-88 -8 24"
+"hole_target" "test.map"
+}
+// entity 8
+{
+"classname" "player_start"
+"origin" "0 -152 40"
+}
+// entity 9
+{
+"classname" "light_point"
+"origin" "-92 -4 24"
+"color" "0.17254902 1 0.047058824"
+"shadows_enabled" "true"
+"intensity" "10000.000000"
 }
