@@ -40,8 +40,15 @@ impl Default for NPCSprite {
 
 #[derive(Component, Clone)]
 struct FocusDetails {
+    pub focus_type: FocusType,
     pub selectable: bool,
     pub text: Option<String>,
+}
+
+#[derive(Clone, Copy)]
+enum FocusType {
+    NPC,
+    Hole,
 }
 
 enum Selection {
@@ -96,7 +103,11 @@ impl NPCSprite {
                 RigidBody::Static,
                 Sensor,
                 Collider::from(Cuboid::default()),
-                FocusDetails { selectable, text },
+                FocusDetails {
+                    selectable,
+                    text,
+                    focus_type: FocusType::NPC,
+                },
             ))
             .observe(update_material_on::<Pointer<Over>>(
                 hover_material.clone(),
@@ -154,6 +165,7 @@ impl HoleSprite {
                 FocusDetails {
                     selectable: true,
                     text: None,
+                    focus_type: FocusType::Hole,
                 },
             ))
             .observe(update_material_on::<Pointer<Over>>(
@@ -571,6 +583,10 @@ fn update_action_text(
         }
         // Doesn't exist but should - spawn it
         (false, true) => {
+            let text = match current_focus.unwrap().focus_type {
+                FocusType::Hole => get_action_str_hole(),
+                FocusType::NPC => get_action_str_npc(),
+            };
             commands.spawn((
                 Node {
                     top: vh(50),
@@ -580,6 +596,12 @@ fn update_action_text(
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     padding: UiRect::axes(px(20), px(10)),
+                    margin: UiRect {
+                        left: px(-36),
+                        right: px(0),
+                        top: px(0),
+                        bottom: px(0),
+                    },
                     ..default()
                 },
                 BackgroundColor {
@@ -587,7 +609,7 @@ fn update_action_text(
                 },
                 ActionText,
                 children![(
-                    Text::new(get_action_str()),
+                    Text::new(text),
                     TextColor(TEXT_COLOR),
                     TextFont {
                         font: server.load(SANS_FONT_PATH),
@@ -601,14 +623,77 @@ fn update_action_text(
     }
 }
 
-fn get_action_str() -> String {
+fn get_action_str_npc() -> String {
     let mut rng = rand::rng();
     let words = vec![
         "chat up this rodent!",
         "kiss this rat! with language!",
         "aaaaaah rat",
         "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "KALT?",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TALK",
+        "TaLK",
+        "TLaK!",
         "TALK to POOPY rat",
+    ];
+    words.choose(&mut rng).unwrap().to_string()
+}
+
+fn get_action_str_hole() -> String {
+    let mut rng = rand::rng();
+    let words = vec![
+        "you could go in this hole!",
+        "HOLE",
+        "HOLE?",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE?",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE?",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE?",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE",
+        "HOLE?",
+        "HOLE",
+        "HOLE?",
+        "hole....",
+        "back in the hole dont get too excited",
     ];
     words.choose(&mut rng).unwrap().to_string()
 }
