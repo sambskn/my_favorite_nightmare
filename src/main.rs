@@ -87,6 +87,8 @@ impl NPCSprite {
         let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.42, 0.42)));
         let material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/rat.png")),
+            emissive: Color::WHITE.into(),
+            emissive_texture: Some(asset_server.load("sprites/rat.png")),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
@@ -94,7 +96,8 @@ impl NPCSprite {
         });
         let hover_material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/rat2.png")),
-            emissive_texture: Some(asset_server.load("sprites/rat2_emissive.png")),
+            emissive: Color::WHITE.into(),
+            emissive_texture: Some(asset_server.load("sprites/rat2.png")),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
