@@ -1,6 +1,6 @@
 use crate::{
     fonts::{SANS_FONT_PATH, SERIF_FONT_PATH},
-    ui::{GameState, MenuPlugin, TEXT_COLOR},
+    ui::{GameState, LoadingPlugin, MenuPlugin, TEXT_COLOR},
 };
 use avian3d::{math::*, prelude::*};
 use bevy::{
@@ -35,18 +35,21 @@ struct PlayerStart;
 struct NPCSprite {
     pub selectable: bool,
     pub text: Option<String>,
+    pub name: String,
 }
 impl Default for NPCSprite {
     fn default() -> Self {
         NPCSprite {
             selectable: true,
             text: None,
+            name: "".to_string(),
         }
     }
 }
 
 #[derive(Component, Clone, PartialEq)]
 struct FocusDetails {
+    pub name: String,
     pub focus_type: FocusType,
     pub selectable: bool,
     pub text: Option<String>,
@@ -73,6 +76,7 @@ impl NPCSprite {
         // so we need to get any values we need now, put em in SpriteDetails)
         let npc_sprite = world.get::<NPCSprite>(ctx.entity).unwrap();
         let selectable = npc_sprite.selectable;
+        let name = npc_sprite.name.clone();
         let text = if !selectable {
             None
         } else {
@@ -114,6 +118,7 @@ impl NPCSprite {
                 Sensor,
                 Collider::from(Cuboid::default()),
                 FocusDetails {
+                    name,
                     selectable,
                     text,
                     focus_type: FocusType::NPC,
@@ -186,6 +191,7 @@ impl HoleSprite {
                 Sensor,
                 Collider::from(Cuboid::default()),
                 FocusDetails {
+                    name: "hole".to_string(),
                     selectable: true,
                     text: Some(hole_target),
                     focus_type: FocusType::Hole,
@@ -225,6 +231,8 @@ fn main() {
             }),
         SeedlingPlugin::default(),
     ))
+    .add_plugins(MenuPlugin)
+    .add_plugins(LoadingPlugin)
     .add_plugins((
         PhysicsPlugins::default(),
         PhysicsPickingPlugin,
@@ -246,7 +254,6 @@ fn main() {
         AudioPlugin,
         TrenchLoaderPlugin,
         BillboardSpritePlugin,
-        MenuPlugin,
     ));
 
     app.run();
@@ -372,9 +379,6 @@ impl Plugin for CameraPlugin {
                 update_action_text.run_if(in_state(GameState::InGame)),
             ),
         );
-
-        // Print info message with control info to console
-        info!("\n\n\nControls:\n\tWASD => move, Mouse => look, Space => 'jump'\n\n");
     }
 }
 
@@ -470,10 +474,6 @@ fn debug_commands_and_oob_reset(
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
             player_tf.translation = level_start.0.clone();
         }
-        // Log current player transform
-        if input.pressed(KeyCode::KeyL) {
-            info!("Player Loc: {:?}", player_tf);
-        }
     }
 }
 
@@ -483,7 +483,6 @@ fn update_player_start_location(
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for (_new_start, start_transform) in &new_player_start {
-        info!("Saving level start loc: {:?}", start_transform);
         level_start.0 = start_transform.translation;
         // Also set state to loaded (is this the right place to do this lol?)
         next_state.set(GameState::InGame);
@@ -492,13 +491,18 @@ fn update_player_start_location(
 
 fn update_camera_transform(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
+    cursor_options: Single<&CursorOptions>,
     mut camera: Query<&mut Transform, With<PlayerCamera>>,
 ) {
     let Ok(mut transform) = camera.single_mut() else {
         return;
     };
 
-    let delta = accumulated_mouse_motion.delta;
+    let delta = if cursor_options.grab_mode == CursorGrabMode::Locked {
+        accumulated_mouse_motion.delta
+    } else {
+        Vec2::ZERO
+    };
     let delta_yaw = -delta.x * 0.003;
     let delta_pitch = -delta.y * 0.003;
 
@@ -602,6 +606,11 @@ fn update_material_on<E: EntityEvent>(
                     Selection::On => {
                         // only actually select if they're close enough
                         if dist <= MAX_DIST_FOR_FOCUS {
+                            if let Some(existing) = highlighted.0.clone() {
+                                if existing.name == sprite_deets.name {
+                                    return;
+                                }
+                            }
                             highlighted.0 = Some(sprite_deets.clone());
                         }
                     }
@@ -633,7 +642,6 @@ fn handle_focus_click(
                 // Load new level
                 if let Some(next_level) = &sprite_deets.text {
                     if next_level.len() > 0 {
-                        info!("Going into this hole {:?}", next_level);
                         // despawn old level
                         for stuff_ent in &level_stuff {
                             commands.entity(stuff_ent).despawn();

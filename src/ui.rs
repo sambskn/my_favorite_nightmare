@@ -12,10 +12,11 @@ use bevy::{
 };
 use bevy_persistent::prelude::*;
 use bevy_seedling::prelude::*;
+use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use crate::fonts::SANS_FONT_PATH;
+use crate::fonts::{SANS_FONT_PATH, SERIF_FONT_PATH};
 
 const SLIDER_TRACK: Color = Color::oklcha(0.5912, 0.1184, 318.87, 0.8);
 const SLIDER_THUMB: Color = Color::oklcha(0.6088, 0.2417, 356.26, 0.92);
@@ -353,4 +354,129 @@ fn save_settings_on_change(
             error!("Failed to save settings: {}", e);
         }
     }
+}
+
+pub struct LoadingPlugin;
+impl Plugin for LoadingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(GameState::Loading), spawn_loading_ui)
+            .add_systems(OnExit(GameState::Loading), despawn_loading_ui);
+    }
+}
+
+#[derive(Component)]
+struct LoadingStuff;
+
+fn spawn_loading_ui(mut commands: Commands, server: Res<AssetServer>) {
+    info!("spawn loading stuff");
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            display: Display::Flex,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            top: px(0),
+            left: px(0),
+            right: px(0),
+            bottom: px(0),
+            ..default()
+        },
+        LoadingStuff,
+        children![(
+            Node {
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                min_height: px(200),
+                min_width: vw(50),
+                padding: UiRect::all(px(10)),
+                ..default()
+            },
+            BackgroundGradient(vec![Gradient::Linear(LinearGradient {
+                color_space: InterpolationColorSpace::OklchaLong,
+                angle: 4.0,
+                stops: vec![
+                    ColorStop::new(Color::linear_rgba(0.1, 0.1, 0.1, 0.8), percent(15)),
+                    ColorStop::new(Color::BLACK, percent(85)),
+                ],
+            })]),
+            children![(
+                Text::new(get_loading_string()),
+                TextColor(TEXT_COLOR),
+                TextFont {
+                    font: server.load(SERIF_FONT_PATH),
+                    font_size: 26.0,
+                    ..default()
+                },
+            )]
+        )],
+    ));
+}
+
+fn despawn_loading_ui(mut commands: Commands, loading_ents: Query<Entity, With<LoadingStuff>>) {
+    for loading_ent in &loading_ents {
+        commands.entity(loading_ent).despawn();
+    }
+}
+
+fn get_loading_string() -> String {
+    let mut rng = rand::rng();
+    let words = vec![
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "not loading?",
+        "now loafing",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "they never ask 'how loading?'  :(",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now larping",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "loading now",
+        "now yodeling",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "now loading",
+        "loading makes me feel good",
+    ];
+    words.choose(&mut rng).unwrap().to_string()
 }
