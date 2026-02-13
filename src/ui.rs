@@ -368,7 +368,6 @@ impl Plugin for LoadingPlugin {
 struct LoadingStuff;
 
 fn spawn_loading_ui(mut commands: Commands, server: Res<AssetServer>) {
-    info!("spawn loading stuff");
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,

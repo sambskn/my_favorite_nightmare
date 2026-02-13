@@ -302,7 +302,7 @@ fn on_stinger_finished(
 #[derive(Component)]
 struct WalkingSFX;
 
-const WALKING_NOISE_MIN_VEL: f32 = 9.5;
+const WALKING_NOISE_MIN_VEL: f32 = 2.5;
 
 fn play_walking_noises(
     player_vels: Query<&LinearVelocity, With<PlayerCamera>>,
