@@ -45,14 +45,14 @@ impl Default for NPCSprite {
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, PartialEq)]
 struct FocusDetails {
     pub focus_type: FocusType,
     pub selectable: bool,
     pub text: Option<String>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum FocusType {
     NPC,
     Hole,
@@ -576,19 +576,35 @@ fn update_billboards<C: Component>(
 #[derive(Resource)]
 struct PlayerFocus(Option<FocusDetails>);
 
+const MAX_DIST_FOR_FOCUS: f32 = 2.0;
+
 fn update_material_on<E: EntityEvent>(
     new_material: Handle<StandardMaterial>,
     selection_mode: Selection,
-) -> impl Fn(On<E>, Query<(&mut MeshMaterial3d<StandardMaterial>, &FocusDetails)>, ResMut<PlayerFocus>)
-{
-    move |trigger, mut query, mut highlighted| {
-        if let Ok((mut material, sprite_deets)) = query.get_mut(trigger.event_target()) {
-            // only swap material if sprite is selectable
+) -> impl Fn(
+    On<E>,
+    Query<(
+        &mut MeshMaterial3d<StandardMaterial>,
+        &FocusDetails,
+        &Transform,
+    )>,
+    ResMut<PlayerFocus>,
+    Single<&Transform, With<PlayerCamera>>,
+) {
+    move |trigger, mut query, mut highlighted, player_tf| {
+        if let Ok((mut material, sprite_deets, sprite_tf)) = query.get_mut(trigger.event_target()) {
+            // Only make sprite 'focused' if it's selectable and close enough
+            let dist = (sprite_tf.translation - player_tf.translation).length();
             if sprite_deets.selectable {
                 material.0 = new_material.clone();
                 match selection_mode {
                     Selection::Off => highlighted.0 = None,
-                    Selection::On => highlighted.0 = Some(sprite_deets.clone()),
+                    Selection::On => {
+                        // only actually select if they're close enough
+                        if dist <= MAX_DIST_FOR_FOCUS {
+                            highlighted.0 = Some(sprite_deets.clone());
+                        }
+                    }
                 }
             }
         }
@@ -734,7 +750,11 @@ fn get_action_str_npc() -> String {
     let words = vec![
         "chat up this rodent!",
         "kiss this rat! with language!",
-        "aaaaaah rat",
+        "rat talk?",
+        "TALK",
+        "TALK",
+        "TALK",
+        "rat chat",
         "TALK",
         "TALK",
         "TALK",
@@ -743,10 +763,7 @@ fn get_action_str_npc() -> String {
         "TALK",
         "TALK",
         "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "KALT?",
+        "t a l k  ? ?",
         "TALK",
         "TALK",
         "TALK",
