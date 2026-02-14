@@ -184,6 +184,54 @@ fn spawn_menu(
                     observe(slider_self_update),
                 ));
             });
+        parent.spawn((
+            Node {
+                padding: UiRect::all(px(20)),
+                ..default()
+            },
+            children![(
+                Text::new("special ty!"),
+                TextColor(TEXT_COLOR),
+                TextFont {
+                    font: server.load(SANS_FONT_PATH),
+                    font_size: 30.0,
+                    ..default()
+                },
+            )],
+        ));
+        parent.spawn((
+            Node {
+                padding: UiRect::axes(px(40), px(4)),
+                ..default()
+            },
+            children![(
+                Text::new("logan!"),
+                TextColor(TEXT_COLOR),
+                TextFont {
+                    font: server.load(SERIF_FONT_PATH),
+                    font_size: 18.0,
+                    ..default()
+                },
+            )],
+        ));
+        parent.spawn(
+            // Playtesters
+            (
+                Node {
+                    padding: UiRect::axes(px(40), px(4)),
+                    ..default()
+                },
+                children![(
+                    Text::new("michelle!"),
+                    TextColor(TEXT_COLOR),
+                    TextFont {
+                        font: server.load(SERIF_FONT_PATH),
+                        font_size: 18.0,
+                        ..default()
+                    },
+                )],
+            ),
+        );
     });
 }
 
@@ -213,7 +261,6 @@ fn menu() -> impl Bundle {
         BackgroundColor {
             0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
         },
-        children![],
     )
 }
 
