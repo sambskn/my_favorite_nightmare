@@ -398,9 +398,10 @@
 // entity 4
 {
 "classname" "npc_sprite"
-"origin" "-268 356 124"
+"origin" "-268 274 120"
 "name" "rat on the roof"
-"text" "im a rat on the roof yo"
+"text" "im a rat on the roof yo you could never do these kinds of stunts and tricks"
+"voice_line" "voice9_siren"
 }
 // entity 5
 {
@@ -408,6 +409,7 @@
 "origin" "-340 408 40"
 "name" "spolier"
 "text" "bruh this hole just takes you back to the womb why would a loving god make a hole like that?"
+"voice_line" "voice10_broko"
 }
 // entity 6
 {
@@ -415,10 +417,11 @@
 "origin" "-168 -300 24"
 "name" "sid walk"
 "text" "bro im walkin here"
+"voice_line" "voice8_horntooter"
 }
 // entity 7
 {
 "classname" "light_directional"
 "origin" "24 72 296"
-"angles" "45 0 0"
+"angles" "45 10 0"
 }

@@ -3497,6 +3497,7 @@
 "origin" "40 -40 24"
 "text" "oh shi they kicked you out of the womb too? its actually not so bad out here there's a kind of a hallway vibe here you'll figure it out champ. never speak to me again"
 "name" "hall rat monitor"
+"voice_line" "voice5_pigly"
 }
 // entity 11
 {
@@ -7261,6 +7262,7 @@
 "origin" "40 -328 24"
 "text" "dude i hate that other rat. there's like only us three rats on this etherel plane and he doesn't even reciprocate head like wtf? anyways... get out of here man his hole is mine, go find your own hole"
 "name" "poop hall boy"
+"voice_line" "voice6_grannygroans"
 }
 // entity 29
 {
@@ -7268,4 +7270,5 @@
 "origin" "-116 -454 16"
 "text" "hey not trying to judge but this is kind of a hole that assholes go into... yeah i mean go ahead if you want. don't raise your voice."
 "name" "trying to judge"
+"voice_line" "voice7_gross"
 }

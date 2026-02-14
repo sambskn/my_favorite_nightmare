@@ -36,6 +36,7 @@ struct NPCSprite {
     pub selectable: bool,
     pub text: Option<String>,
     pub name: String,
+    pub voice_line: String,
 }
 impl Default for NPCSprite {
     fn default() -> Self {
@@ -43,6 +44,7 @@ impl Default for NPCSprite {
             selectable: true,
             text: None,
             name: "".to_string(),
+            voice_line: "voice1_whiny".to_string(),
         }
     }
 }
@@ -53,6 +55,7 @@ struct FocusDetails {
     pub focus_type: FocusType,
     pub selectable: bool,
     pub text: Option<String>,
+    pub sound_on_action: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -77,6 +80,7 @@ impl NPCSprite {
         let npc_sprite = world.get::<NPCSprite>(ctx.entity).unwrap();
         let selectable = npc_sprite.selectable;
         let name = npc_sprite.name.clone();
+        let voice_line = npc_sprite.voice_line.clone();
         let text = if !selectable {
             None
         } else {
@@ -121,6 +125,7 @@ impl NPCSprite {
                     name,
                     selectable,
                     text,
+                    sound_on_action: Some(voice_line),
                     focus_type: FocusType::NPC,
                 },
                 LevelStuff,
@@ -194,6 +199,7 @@ impl HoleSprite {
                     name: "hole".to_string(),
                     selectable: true,
                     text: Some(hole_target),
+                    sound_on_action: Some("warp".to_string()),
                     focus_type: FocusType::Hole,
                 },
                 LevelStuff,
@@ -620,9 +626,16 @@ fn update_material_on<E: EntityEvent>(
     }
 }
 
+#[derive(Component)]
+struct HoleSFX;
+
+#[derive(Component)]
+struct RatVoice;
+
 fn handle_focus_click(
     highlighted: Res<PlayerFocus>,
     text_box_query: Query<Entity, With<TextBox>>,
+    voice_query: Query<Entity, With<RatVoice>>,
     mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
     scene: Single<Entity, With<SceneInstance>>,
@@ -636,7 +649,27 @@ fn handle_focus_click(
         return;
     }
 
+    // similar thing for rat voice
+    for voice_line_ent in &voice_query {
+        commands.entity(voice_line_ent).despawn();
+        // return early
+        return;
+    }
+
     if let Some(sprite_deets) = &highlighted.0 {
+        // play noise if we got one
+        if let Some(sound_name) = sprite_deets.sound_on_action.clone() {
+            let sound_path = format!("sounds/{sound_name}.wav");
+            match sprite_deets.focus_type {
+                FocusType::Hole => {
+                    commands.spawn((SamplePlayer::new(server.load(sound_path)), HoleSFX));
+                }
+                FocusType::NPC => {
+                    commands.spawn((SamplePlayer::new(server.load(sound_path)), RatVoice));
+                }
+            };
+        }
+
         match sprite_deets.focus_type {
             FocusType::Hole => {
                 // Load new level

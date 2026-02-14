@@ -1785,6 +1785,7 @@
 "origin" "54 -272 24"
 "text" "bro there is NOT room for another mouth to feed in this place. go in the hole man, nothing personal, you should go in the hole though"
 "name" "rat that i love"
+"voice_line" "voice1_whiny"
 }
 // entity 3
 {
@@ -1807,6 +1808,7 @@
 "selectable" "true"
 "text" "im too scared to go in the hole i heard it sucks"
 "name" "slanky salsa"
+"voice_line" "voice3_ripper"
 }
 // entity 6
 {
@@ -1814,6 +1816,7 @@
 "origin" "-56 -248 24"
 "text" "i asked for a room with a view and instead im in a womb with you :( get the hell out of here dude go in the hole"
 "name" "italian rat"
+"voice_line" "voice2_whaha"
 }
 // entity 7
 {
@@ -1841,4 +1844,5 @@
 "selectable" "true"
 "text" "oh this is like a grave i made becuase i plan on dying here. you gotta go in the hole dude there's no room for you"
 "name" "rat-bottom jeans"
+"voice_line" "voice4_bully"
 }
