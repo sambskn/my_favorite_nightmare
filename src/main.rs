@@ -223,6 +223,7 @@ struct LevelStuff;
 
 fn main() {
     let mut app = App::new();
+    app.insert_resource(ClearColor(Color::srgb(0.463, 0.722, 0.643)));
     app.add_plugins((
         DefaultPlugins
             .set(ImagePlugin::default_nearest()) // show pixels
@@ -414,6 +415,16 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
         CollidingEntities::default(),
         LockedAxes::ROTATION_LOCKED,
         LevelStuff,
+        DistanceFog {
+            color: Color::srgba(0.35, 0.48, 0.66, 1.0),
+            directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.5),
+            directional_light_exponent: 30.0,
+            falloff: FogFalloff::from_visibility_colors(
+                15.0, // distance in world units up to which objects retain visibility (>= 5% contrast)
+                Color::srgb(0.35, 0.5, 0.66), // atmospheric extinction color (after light is lost due to absorption by atmospheric particles)
+                Color::srgb(0.8, 0.844, 1.0), // atmospheric inscattering color (light gained due to scattering from the sun)
+            ),
+        },
     ));
 }
 
