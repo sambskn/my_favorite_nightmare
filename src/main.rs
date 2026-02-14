@@ -550,7 +550,7 @@ impl Plugin for TrenchLoaderPlugin {
     }
 }
 
-const INITIAL_LEVEL: &'static str = "street.map";
+const INITIAL_LEVEL: &'static str = "test.map";
 
 fn spawn_initial_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(SceneRoot(
