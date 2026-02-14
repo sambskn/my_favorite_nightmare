@@ -535,12 +535,16 @@ fn release_cursor(mut cursor: Single<&mut CursorOptions>) {
 struct TrenchLoaderPlugin;
 impl Plugin for TrenchLoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_test_map);
+        app.add_systems(Startup, spawn_initial_map);
     }
 }
 
-fn spawn_test_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(SceneRoot(asset_server.load("maps/test.map#Scene")));
+const INITIAL_LEVEL: &'static str = "street.map";
+
+fn spawn_initial_map(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(SceneRoot(
+        asset_server.load(format!("maps/{INITIAL_LEVEL}#Scene")),
+    ));
 }
 
 // Plugin for keeping billboard sprites facing the camera
