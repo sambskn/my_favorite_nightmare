@@ -1,6 +1,7 @@
 use crate::{
     LevelStuff, PlayerCamera, TextBox,
     fonts::SERIF_FONT_PATH,
+    text_parse::parse_random_text,
     ui::{GameState, TEXT_COLOR},
 };
 use avian3d::prelude::*;
@@ -136,10 +137,6 @@ impl NPCSprite {
     }
 }
 
-// point_class marks it for bevy_trenchbroom
-// - adding a model path is for display in trenchbroom, not pulled for bevy side atm
-// component is the bevy macro used to set up the hook for spawning our billboarded sprite
-// (calling the on_add fn below)
 #[point_class(
     model({ path: "sprites/hole.png", scale: 0.5 }),
 )]
@@ -167,6 +164,8 @@ impl HoleSprite {
         let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.42, 0.42)));
         let material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/hole.png")),
+            emissive_texture: Some(asset_server.load("sprites/hole.png")),
+            emissive: Color::WHITE.into(),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
@@ -174,7 +173,8 @@ impl HoleSprite {
         });
         let hover_material = asset_server.add(StandardMaterial {
             base_color_texture: Some(asset_server.load("sprites/hole.png")),
-            emissive_texture: Some(asset_server.load("sprites/hole_emissive.png")),
+            emissive_texture: Some(asset_server.load("sprites/hole.png")),
+            emissive: Color::WHITE.into(),
             perceptual_roughness: 1.0,
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
@@ -209,6 +209,153 @@ impl HoleSprite {
             ));
     }
 }
+
+#[point_class(
+    model({ path: "sprites/plant.png", scale: 2. }),
+)]
+#[component(on_add = Self::on_add)]
+struct PlantSprite {
+    pub name: String,
+}
+impl Default for PlantSprite {
+    fn default() -> Self {
+        PlantSprite {
+            name: String::new(),
+        }
+    }
+}
+
+impl PlantSprite {
+    pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        let Some(asset_server) = world.get_resource::<AssetServer>() else {
+            return;
+        };
+
+        let plant_sprite = world.get::<PlantSprite>(ctx.entity).unwrap();
+        let plant_name = plant_sprite.name.clone();
+
+        let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(1.414, 1.414)));
+        let material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/plant.png")),
+            emissive_texture: Some(asset_server.load("sprites/plant.png")),
+            emissive: Color::WHITE.into(),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
+        world.commands().entity(ctx.entity).insert((
+            Mesh3d(rect_mesh),
+            MeshMaterial3d(material),
+            RigidBody::Static,
+            Sensor,
+            Collider::from(Cuboid::default()),
+            FocusDetails {
+                name: plant_name,
+                selectable: false,
+                text: None,
+                sound_on_action: None,
+                focus_type: FocusType::Hole,
+            },
+            LevelStuff,
+        ));
+    }
+}
+
+#[point_class(
+    model({ path: "sprites/face.png", scale: 1. }),
+)]
+#[component(on_add = Self::on_add)]
+struct FaceSprite {
+    pub name: String,
+}
+impl Default for FaceSprite {
+    fn default() -> Self {
+        FaceSprite {
+            name: String::new(),
+        }
+    }
+}
+
+impl FaceSprite {
+    pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        let Some(asset_server) = world.get_resource::<AssetServer>() else {
+            return;
+        };
+
+        let face_sprite = world.get::<FaceSprite>(ctx.entity).unwrap();
+        let face_name = face_sprite.name.clone();
+
+        let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(1.414, 1.414)));
+        let material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/face.png")),
+            emissive_texture: Some(asset_server.load("sprites/face.png")),
+            emissive: Color::WHITE.into(),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
+        world.commands().entity(ctx.entity).insert((
+            Mesh3d(rect_mesh),
+            MeshMaterial3d(material),
+            RigidBody::Static,
+            Sensor,
+            Collider::from(Cuboid::default()),
+            FocusDetails {
+                name: face_name,
+                selectable: false,
+                text: None,
+                sound_on_action: None,
+                focus_type: FocusType::Hole,
+            },
+            LevelStuff,
+        ));
+    }
+}
+
+#[point_class(
+    model({ path: "sprites/coin.png", scale: .2 }),
+)]
+#[component(on_add = Self::on_add)]
+struct CoinSprite;
+
+impl CoinSprite {
+    pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        let Some(asset_server) = world.get_resource::<AssetServer>() else {
+            return;
+        };
+
+        let rect_mesh = asset_server.add(Mesh::from(Rectangle::new(0.1, 0.1)));
+        let material = asset_server.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("sprites/coin.png")),
+            emissive_texture: Some(asset_server.load("sprites/coin.png")),
+            emissive: Color::WHITE.into(),
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(1.0),
+            cull_mode: None,
+            ..default()
+        });
+        world.commands().entity(ctx.entity).insert((
+            Mesh3d(rect_mesh),
+            MeshMaterial3d(material),
+            RigidBody::Static,
+            Sensor,
+            Collider::from(Cuboid::default()),
+            FocusDetails {
+                name: "coin".to_string(),
+                selectable: false,
+                text: None,
+                sound_on_action: None,
+                focus_type: FocusType::Hole,
+            },
+            LevelStuff,
+        ));
+    }
+}
+
+#[solid_class]
+pub struct CoolSolid;
 
 #[derive(Resource)]
 pub struct PlayerFocus(pub Option<FocusDetails>);
@@ -331,7 +478,7 @@ fn handle_focus_click(
                             0: Color::Oklcha(Oklcha::new(0.1788, 0.0099, 288.85, 1.0)),
                         },
                         children![(
-                            Text::new(sprite_text),
+                            Text::new(parse_random_text(sprite_text)),
                             TextColor(TEXT_COLOR),
                             TextFont {
                                 font: server.load(SERIF_FONT_PATH),
@@ -356,6 +503,9 @@ impl Plugin for BillboardSpritePlugin {
                 (
                     update_billboards::<NPCSprite>.run_if(in_state(GameState::InGame)),
                     update_billboards::<HoleSprite>.run_if(in_state(GameState::InGame)),
+                    update_billboards::<PlantSprite>.run_if(in_state(GameState::InGame)),
+                    update_billboards::<CoinSprite>.run_if(in_state(GameState::InGame)),
+                    update_billboards::<FaceSprite>.run_if(in_state(GameState::InGame)),
                     handle_focus_click
                         .run_if(in_state(GameState::InGame))
                         .run_if(input_just_pressed(MouseButton::Left)),
@@ -376,8 +526,8 @@ fn update_billboards<C: Component>(
     for mut sprite_tf in &mut sprite_query {
         // check diff between current sprite rotation and target
         let current_sprite_rotation = sprite_tf.rotation.clone();
-        let mut target_tf = sprite_tf.clone();
-        target_tf.look_at(cam_tf.translation, Vec3::Y);
+        let target_tf = cam_tf.clone();
+        // target_tf.look_at(cam_tf.translation, Vec3::Y);
         let target_tf_rotation = target_tf.rotation;
         let diff = target_tf_rotation.angle_between(current_sprite_rotation);
         if diff > SPRITE_ROTATE_THRESHOLD {

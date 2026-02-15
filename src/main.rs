@@ -16,6 +16,7 @@ use rand::seq::IndexedRandom;
 
 mod fonts;
 mod sprites;
+mod text_parse;
 mod ui;
 
 const GRAVITY_MULT: f32 = 160.0;

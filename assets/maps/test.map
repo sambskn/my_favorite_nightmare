@@ -1783,7 +1783,7 @@
 {
 "classname" "npc_sprite"
 "origin" "54 -272 24"
-"text" "bro there is NOT room for another mouth to feed in this place. go in the hole man, nothing personal, you should go in the hole though"
+"text" "<bro|compadre|ay u big trash taquito,> there is NOT room for another <mouth to feed|low-energy cuck|disappointing rat> in this place. go in the hole man, nothing personal, you should go in the hole though"
 "name" "rat that i love"
 "voice_line" "voice1_whiny"
 }
@@ -1806,7 +1806,7 @@
 "classname" "npc_sprite"
 "origin" "88 -88 24"
 "selectable" "true"
-"text" "im too scared to go in the hole i heard it sucks"
+"text" "im too <scared|horny|loose and made up of small detritus> to go in the hole i heard it <sucks|mega sucks|super suction turbo sucks>. <im not ready for my parents to find my embarrassing corpse yet|i got sucked once and it wasn't for me tbh|god says no sucking in the bible, no idk why nipples are still like that then, probably satan tempting us>"
 "name" "slanky salsa"
 "voice_line" "voice3_ripper"
 }
@@ -1814,7 +1814,7 @@
 {
 "classname" "npc_sprite"
 "origin" "-56 -248 24"
-"text" "i asked for a room with a view and instead im in a womb with you :( get the hell out of here dude go in the hole"
+"text" "i asked for <a room with a view and instead im in a womb with you|god to send me and angel and he sent ur ass|nothing, i receive nothing, such is life, you may never understand> :( get the hell out of here dude go in the hole"
 "name" "italian rat"
 "voice_line" "voice2_whaha"
 }
@@ -1842,7 +1842,27 @@
 "classname" "npc_sprite"
 "origin" "-72 -48 24"
 "selectable" "true"
-"text" "oh this is like a grave i made becuase i plan on dying here. you gotta go in the hole dude there's no room for you"
+"text" "oh this is like a grave i made because <i plan on dying here|god might be real and if so he knows how I abuse my tender swollen member|i might need to threaten my local rat-presentative with a dirtnap, they took my ai wife|of a cool sex thing i do>. <would love to talk more, but|you gotta|> go in the hole dude <there's no room for you|i gotta go vape>"
 "name" "rat-bottom jeans"
 "voice_line" "voice4_bully"
+}
+// entity 11
+{
+"classname" "coin_sprite"
+"origin" "40 -152 24"
+}
+// entity 12
+{
+"classname" "coin_sprite"
+"origin" "40 -120 24"
+}
+// entity 13
+{
+"classname" "coin_sprite"
+"origin" "72 -40 24"
+}
+// entity 14
+{
+"classname" "coin_sprite"
+"origin" "-88 -8 24"
 }

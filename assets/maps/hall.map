@@ -7272,3 +7272,23 @@
 "name" "trying to judge"
 "voice_line" "voice7_gross"
 }
+// entity 30
+{
+"classname" "face_sprite"
+"origin" "-8 136 24"
+}
+// entity 31
+{
+"classname" "coin_sprite"
+"origin" "-8 -264 24"
+}
+// entity 32
+{
+"classname" "coin_sprite"
+"origin" "8 -88 24"
+}
+// entity 33
+{
+"classname" "coin_sprite"
+"origin" "8 -408 24"
+}
