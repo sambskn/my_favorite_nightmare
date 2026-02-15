@@ -20,7 +20,7 @@ mod sprites;
 mod text_parse;
 mod ui;
 
-const GRAVITY_MULT: f32 = 160.0;
+const GRAVITY_MULT: f32 = 80.;
 
 // marker component for stuff to destroy between levels
 #[derive(Component)]
@@ -123,7 +123,7 @@ fn play_walking_noises(
     server: Res<AssetServer>,
 ) {
     for vel in player_vels {
-        if vel.length() > WALKING_NOISE_MIN_VEL {
+        if get_xz_len(&vel) > WALKING_NOISE_MIN_VEL {
             // only fire if none are playing
             if playing_walking_samples.is_empty() {
                 let sfx_path = get_random_walking_sound_path();
@@ -181,6 +181,7 @@ impl Plugin for CameraPlugin {
         .add_systems(
             Update,
             (
+                update_grounded.run_if(in_state(GameState::InGame)),
                 update_camera_transform.run_if(in_state(GameState::InGame)),
                 capture_cursor
                     .run_if(input_just_pressed(MouseButton::Left))
@@ -278,12 +279,19 @@ fn reset_focus(mut focus: ResMut<PlayerFocus>) {
 }
 
 #[derive(Component)]
+struct Grounded;
+
+#[derive(Component)]
 struct PlayerCamera;
 
 #[derive(Resource, Clone, Debug)]
 struct LevelStartLocation(Vec3);
 
 fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
+    let player_collider = Collider::cuboid(0.125, 0.5, 0.125);
+    let mut caster_shape = player_collider.clone();
+    caster_shape.set_scale(Vector::ONE * 0.99, 10);
+
     commands.spawn((
         PlayerCamera,
         Camera3d::default(),
@@ -294,7 +302,14 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
         Transform::from_xyz(level_start.0.x, level_start.0.y, level_start.0.z)
             .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
         RigidBody::Dynamic,
-        Collider::cuboid(0.1, 0.5, 0.1),
+        ShapeCaster::new(
+            caster_shape,
+            Vector::ZERO,
+            Quaternion::default(),
+            Dir3::NEG_Y,
+        )
+        .with_max_distance(0.2),
+        player_collider,
         TransformInterpolation,
         CollidingEntities::default(),
         LockedAxes::ROTATION_LOCKED,
@@ -312,16 +327,36 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
     ));
 }
 
+const MAX_SLOPE_ANGLE: f32 = 45.;
+
+fn update_grounded(
+    mut commands: Commands,
+    mut query: Query<(Entity, &ShapeHits, &Rotation), With<PlayerCamera>>,
+) {
+    for (entity, hits, rotation) in &mut query {
+        let is_grounded = hits
+            .iter()
+            .any(|hit| (rotation * -hit.normal2).angle_between(Vector::Y).abs() <= MAX_SLOPE_ANGLE);
+        if is_grounded {
+            commands.entity(entity).insert(Grounded);
+        } else {
+            commands.entity(entity).remove::<Grounded>();
+        }
+    }
+}
+
 const PLAYER_SPEED: f32 = 3.5;
+const PLAYER_JUMP_SPEED: f32 = 2.0;
 const PLAYER_SPRINT_BOOST: f32 = 3.0;
 const PLAYER_SLOWDOWN_MULT: f32 = 20.0;
+const PLAYER_IN_AIR_SLOWDOWN_MULT: f32 = 5.;
 
 fn player_camera_movement(
-    mut query: Query<(&mut LinearVelocity, &Transform), With<PlayerCamera>>,
+    mut query: Query<(&mut LinearVelocity, &Transform, Has<Grounded>), With<PlayerCamera>>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
-    for (mut lin_vel, camera) in &mut query {
+    for (mut lin_vel, camera, is_grounded) in &mut query {
         // build movement vec from current inputs
         let mut movement_vel = Vec3::ZERO;
         if input.pressed(KeyCode::KeyW) {
@@ -336,11 +371,9 @@ fn player_camera_movement(
         if input.pressed(KeyCode::KeyD) {
             movement_vel += Vec3::X
         }
-        if input.pressed(KeyCode::Space) || input.pressed(KeyCode::KeyE) {
-            movement_vel += Vec3::Y
-        }
-        if input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::KeyQ) {
-            movement_vel += Vec3::NEG_Y
+        // only jump if on the ground
+        if (input.pressed(KeyCode::Space) || input.pressed(KeyCode::KeyE)) && is_grounded {
+            movement_vel += Vec3::Y * PLAYER_JUMP_SPEED
         }
         movement_vel = movement_vel.normalize_or_zero();
         movement_vel *= PLAYER_SPEED;
@@ -352,28 +385,39 @@ fn player_camera_movement(
         // Add to current velocity
         lin_vel.0 += movement_vel.adjust_precision();
 
-        let current_speed = lin_vel.length();
+        let current_speed = get_xz_len(&lin_vel);
         if current_speed > 0.0 {
-            // Apply friction
-            lin_vel.0 = lin_vel.0 / current_speed
-                * (current_speed
-                    - current_speed * PLAYER_SLOWDOWN_MULT * time.delta_secs().adjust_precision())
-                .max(0.0)
+            // Apply friction, though only in X and Z dirs
+            let mult = if is_grounded {
+                PLAYER_SLOWDOWN_MULT
+            } else {
+                PLAYER_IN_AIR_SLOWDOWN_MULT
+            } * time.delta_secs().adjust_precision();
+            lin_vel.0.x =
+                lin_vel.0.x / current_speed * (current_speed - current_speed * mult).max(0.0);
+            lin_vel.0.z =
+                lin_vel.0.z / current_speed * (current_speed - current_speed * mult).max(0.0);
         }
     }
 }
 
+fn get_xz_len(input: &Vec3) -> f32 {
+    (input.x * input.x + input.z * input.z).sqrt()
+}
+
 const MIN_Y: f32 = -5.;
 fn debug_commands_and_oob_reset(
-    mut player_tf_query: Query<&mut Transform, With<PlayerCamera>>,
+    mut player_tf_query: Query<(&mut Transform, &mut LinearVelocity), With<PlayerCamera>>,
     level_start: Res<LevelStartLocation>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
-    for mut player_tf in &mut player_tf_query {
+    for (mut player_tf, mut lin_vel) in &mut player_tf_query {
         // reset player location to start transform
         // also do it if we're way oob )happens on wasm sometimes
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
             player_tf.translation = level_start.0.clone();
+            // also set the velocity to 0 so we don't clip through stuff on respawn
+            lin_vel.0 = Vec3::ZERO;
         }
     }
 }
