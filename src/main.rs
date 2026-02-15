@@ -13,7 +13,7 @@ use bevy::{
 use bevy_seedling::prelude::*;
 use bevy_trenchbroom::prelude::*;
 use bevy_trenchbroom_avian::AvianPhysicsBackend;
-use rand::seq::IndexedRandom;
+use rand::{Rng, seq::IndexedRandom};
 
 mod fonts;
 mod sprites;
@@ -173,8 +173,7 @@ impl Plugin for CameraPlugin {
         .add_systems(
             FixedUpdate,
             (
-                (player_camera_movement, debug_commands_and_oob_reset)
-                    .run_if(in_state(GameState::InGame)),
+                player_camera_movement.run_if(in_state(GameState::InGame)),
                 update_player_start_location.run_if(in_state(GameState::Loading)),
             ),
         )
@@ -182,6 +181,7 @@ impl Plugin for CameraPlugin {
             Update,
             (
                 update_grounded.run_if(in_state(GameState::InGame)),
+                debug_commands_and_oob_reset.run_if(in_state(GameState::InGame)),
                 update_camera_transform.run_if(in_state(GameState::InGame)),
                 capture_cursor
                     .run_if(input_just_pressed(MouseButton::Left))
@@ -331,18 +331,40 @@ const MAX_SLOPE_ANGLE: f32 = 45.;
 
 fn update_grounded(
     mut commands: Commands,
-    mut query: Query<(Entity, &ShapeHits, &Rotation), With<PlayerCamera>>,
+    server: Res<AssetServer>,
+    mut query: Query<(Entity, &ShapeHits, &Rotation, Has<Grounded>), With<PlayerCamera>>,
 ) {
-    for (entity, hits, rotation) in &mut query {
+    for (entity, hits, rotation, already_grounded) in &mut query {
         let is_grounded = hits
             .iter()
             .any(|hit| (rotation * -hit.normal2).angle_between(Vector::Y).abs() <= MAX_SLOPE_ANGLE);
         if is_grounded {
             commands.entity(entity).insert(Grounded);
+            if !already_grounded {
+                commands.spawn((
+                    SamplePlayer::new(server.load(get_random_oof_sound_path())),
+                    bevy_seedling::sample::PlaybackSettings {
+                        speed: get_scalar_boosted_rand_sfx_speed(1.5),
+                        ..default()
+                    },
+                ));
+            }
         } else {
             commands.entity(entity).remove::<Grounded>();
         }
     }
+}
+
+fn get_random_oof_sound_path() -> String {
+    let mut rng = rand::rng();
+    let noises = vec![
+        "sounds/pain1.wav",
+        "sounds/pain2.wav",
+        "sounds/pain3.wav",
+        "sounds/pain4.wav",
+        "sounds/pain5.wav",
+    ];
+    noises.choose(&mut rng).unwrap().to_string()
 }
 
 const PLAYER_SPEED: f32 = 3.5;
@@ -355,6 +377,8 @@ fn player_camera_movement(
     mut query: Query<(&mut LinearVelocity, &Transform, Has<Grounded>), With<PlayerCamera>>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
 ) {
     for (mut lin_vel, camera, is_grounded) in &mut query {
         // build movement vec from current inputs
@@ -399,11 +423,32 @@ fn player_camera_movement(
         // handle vert component
         // only jump if on the ground
         if input.just_pressed(KeyCode::Space) && is_grounded {
+            commands.spawn((
+                SamplePlayer::new(server.load("sounds/boing.wav")),
+                bevy_seedling::sample::PlaybackSettings {
+                    speed: get_scalar_boosted_rand_sfx_speed(current_speed),
+                    ..default()
+                },
+            ));
             lin_vel.0 += Vec3::Y * PLAYER_JUMP_SPEED;
             // Limit jump speed
             lin_vel.0.y = lin_vel.0.y.min(PLAYER_JUMP_SPEED);
         }
     }
+}
+
+fn get_scalar_boosted_rand_sfx_speed(scalar: f32) -> f64 {
+    let mut rng = rand::rng();
+    let adjusted_scalar = scalar * 0.15;
+    let low_bound = 1.00 + adjusted_scalar / 3.0;
+    let high_bound = adjusted_scalar.max(1.125);
+    (if low_bound == high_bound {
+        low_bound
+    } else if low_bound < high_bound {
+        rng.random_range(low_bound..high_bound)
+    } else {
+        rng.random_range(high_bound..low_bound)
+    }) as f64
 }
 
 fn get_xz_len(input: &Vec3) -> f32 {
@@ -415,11 +460,14 @@ fn debug_commands_and_oob_reset(
     mut player_tf_query: Query<(&mut Transform, &mut LinearVelocity), With<PlayerCamera>>,
     level_start: Res<LevelStartLocation>,
     input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
 ) {
     for (mut player_tf, mut lin_vel) in &mut player_tf_query {
         // reset player location to start transform
         // also do it if we're way oob )happens on wasm sometimes
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
+            commands.spawn(SamplePlayer::new(server.load("sounds/badwarp.wav")));
             player_tf.translation = level_start.0.clone();
             // also set the velocity to 0 so we don't clip through stuff on respawn
             lin_vel.0 = Vec3::ZERO;
@@ -483,7 +531,7 @@ impl Plugin for TrenchLoaderPlugin {
     }
 }
 
-const INITIAL_LEVEL: &'static str = "test.map";
+const INITIAL_LEVEL: &'static str = "start.map";
 
 fn spawn_initial_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(SceneRoot(
