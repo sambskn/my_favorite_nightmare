@@ -20,7 +20,7 @@ mod sprites;
 mod text_parse;
 mod ui;
 
-const GRAVITY_MULT: f32 = 80.;
+const GRAVITY_MULT: f32 = 16.8;
 
 // marker component for stuff to destroy between levels
 #[derive(Component)]
@@ -288,7 +288,7 @@ struct PlayerCamera;
 struct LevelStartLocation(Vec3);
 
 fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
-    let player_collider = Collider::cuboid(0.125, 0.5, 0.125);
+    let player_collider = Collider::cuboid(0.5, 0.5, 0.5);
     let mut caster_shape = player_collider.clone();
     caster_shape.set_scale(Vector::ONE * 0.99, 10);
 
@@ -300,7 +300,7 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
             ..default()
         },
         Transform::from_xyz(level_start.0.x, level_start.0.y, level_start.0.z)
-            .looking_at(Vec3::new(0., 1.414, 0.), Vec3::Y),
+            .looking_at(Vec3::new(0., level_start.0.y, 0.), Vec3::Y),
         RigidBody::Dynamic,
         ShapeCaster::new(
             caster_shape,
@@ -346,10 +346,10 @@ fn update_grounded(
 }
 
 const PLAYER_SPEED: f32 = 3.5;
-const PLAYER_JUMP_SPEED: f32 = 2.0;
-const PLAYER_SPRINT_BOOST: f32 = 3.0;
+const PLAYER_JUMP_SPEED: f32 = 4.0;
+const PLAYER_SPRINT_BOOST: f32 = 1.5;
 const PLAYER_SLOWDOWN_MULT: f32 = 20.0;
-const PLAYER_IN_AIR_SLOWDOWN_MULT: f32 = 5.;
+const PLAYER_IN_AIR_SLOWDOWN_MULT: f32 = 15.;
 
 fn player_camera_movement(
     mut query: Query<(&mut LinearVelocity, &Transform, Has<Grounded>), With<PlayerCamera>>,
@@ -371,10 +371,6 @@ fn player_camera_movement(
         if input.pressed(KeyCode::KeyD) {
             movement_vel += Vec3::X
         }
-        // only jump if on the ground
-        if (input.pressed(KeyCode::Space) || input.pressed(KeyCode::KeyE)) && is_grounded {
-            movement_vel += Vec3::Y * PLAYER_JUMP_SPEED
-        }
         movement_vel = movement_vel.normalize_or_zero();
         movement_vel *= PLAYER_SPEED;
         if input.pressed(KeyCode::ShiftLeft) {
@@ -383,7 +379,8 @@ fn player_camera_movement(
         movement_vel = camera.rotation * movement_vel;
 
         // Add to current velocity
-        lin_vel.0 += movement_vel.adjust_precision();
+        lin_vel.0.x += movement_vel.adjust_precision().x;
+        lin_vel.0.z += movement_vel.adjust_precision().z;
 
         let current_speed = get_xz_len(&lin_vel);
         if current_speed > 0.0 {
@@ -397,6 +394,14 @@ fn player_camera_movement(
                 lin_vel.0.x / current_speed * (current_speed - current_speed * mult).max(0.0);
             lin_vel.0.z =
                 lin_vel.0.z / current_speed * (current_speed - current_speed * mult).max(0.0);
+        }
+
+        // handle vert component
+        // only jump if on the ground
+        if input.just_pressed(KeyCode::Space) && is_grounded {
+            lin_vel.0 += Vec3::Y * PLAYER_JUMP_SPEED;
+            // Limit jump speed
+            lin_vel.0.y = lin_vel.0.y.min(PLAYER_JUMP_SPEED);
         }
     }
 }
