@@ -1,6 +1,7 @@
 use crate::{
     fonts::SANS_FONT_PATH,
     sprites::{BillboardSpritePlugin, FocusType, PlayerFocus, PlayerStart},
+    text_parse::parse_random_text,
     ui::{GameState, LoadingPlugin, MenuPlugin, TEXT_COLOR},
 };
 use avian3d::{math::*, prelude::*};
@@ -261,79 +262,15 @@ fn update_action_text(
 }
 
 fn get_action_str_npc() -> String {
-    let mut rng = rand::rng();
-    let words = vec![
-        "chat up this rodent!",
-        "kiss this rat! with language!",
-        "rat talk?",
-        "TALK",
-        "TALK",
-        "TALK",
-        "rat chat",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "t a l k  ? ?",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TALK",
-        "TaLK",
-        "TLaK!",
-        "TALK to POOPY rat",
-    ];
-    words.choose(&mut rng).unwrap().to_string()
+    parse_random_text(
+        "<TALK:80|TALK!!:10|TALK...|TaLK|rat chat?:5|talk to POOPY rat|chat up this rodent playa?|kiss this rat with language|RAT>",
+    )
 }
 
 fn get_action_str_hole() -> String {
-    let mut rng = rand::rng();
-    let words = vec![
-        "you could go in this hole!",
-        "HOLE",
-        "HOLE?",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE?",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE?",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE?",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE",
-        "HOLE?",
-        "HOLE",
-        "HOLE?",
-        "hole....",
-        "back in the hole dont get too excited",
-    ];
-    words.choose(&mut rng).unwrap().to_string()
+    parse_random_text(
+        "<HOLE:80|HOLE?:10|HOLE?:5|back in the hole don't get too excited|you could go in this hole>",
+    )
 }
 
 fn reset_focus(mut focus: ResMut<PlayerFocus>) {
