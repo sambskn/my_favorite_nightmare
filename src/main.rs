@@ -296,7 +296,7 @@ struct LevelStartLocation {
 }
 
 fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
-    let player_collider = Collider::cuboid(0.5, 0.5, 0.5);
+    let player_collider = Collider::cuboid(0.1, 0.5, 0.1);
     let mut caster_shape = player_collider.clone();
     caster_shape.set_scale(Vector::ONE * 0.99, 10);
 
