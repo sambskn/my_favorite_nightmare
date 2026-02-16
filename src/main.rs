@@ -175,13 +175,13 @@ impl Plugin for CameraPlugin {
             (
                 player_camera_movement.run_if(in_state(GameState::InGame)),
                 update_player_start_location.run_if(in_state(GameState::Loading)),
+                update_grounded.run_if(in_state(GameState::InGame)),
+                debug_commands_and_oob_reset.run_if(in_state(GameState::InGame)),
             ),
         )
         .add_systems(
             Update,
             (
-                update_grounded.run_if(in_state(GameState::InGame)),
-                debug_commands_and_oob_reset.run_if(in_state(GameState::InGame)),
                 update_camera_transform.run_if(in_state(GameState::InGame)),
                 capture_cursor
                     .run_if(input_just_pressed(MouseButton::Left))
@@ -437,7 +437,7 @@ fn player_camera_movement(
     }
 }
 
-fn get_scalar_boosted_rand_sfx_speed(scalar: f32) -> f64 {
+pub fn get_scalar_boosted_rand_sfx_speed(scalar: f32) -> f64 {
     let mut rng = rand::rng();
     let adjusted_scalar = scalar * 0.15;
     let low_bound = 1.00 + adjusted_scalar / 3.0;
@@ -455,7 +455,7 @@ fn get_xz_len(input: &Vec3) -> f32 {
     (input.x * input.x + input.z * input.z).sqrt()
 }
 
-const MIN_Y: f32 = -5.;
+const MIN_Y: f32 = 0.0;
 fn debug_commands_and_oob_reset(
     mut player_tf_query: Query<(&mut Transform, &mut LinearVelocity), With<PlayerCamera>>,
     level_start: Res<LevelStartLocation>,

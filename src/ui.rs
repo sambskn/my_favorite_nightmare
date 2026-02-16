@@ -190,7 +190,7 @@ fn spawn_menu(
                 ..default()
             },
             children![(
-                Text::new("special ty!"),
+                Text::new("game by sam!"),
                 TextColor(TEXT_COLOR),
                 TextFont {
                     font: server.load(SANS_FONT_PATH),
@@ -199,39 +199,54 @@ fn spawn_menu(
                 },
             )],
         ));
-        parent.spawn((
-            Node {
-                padding: UiRect::axes(px(40), px(4)),
-                ..default()
-            },
-            children![(
-                Text::new("logan!"),
-                TextColor(TEXT_COLOR),
-                TextFont {
-                    font: server.load(SERIF_FONT_PATH),
-                    font_size: 18.0,
-                    ..default()
-                },
-            )],
-        ));
-        parent.spawn(
-            // Playtesters
-            (
-                Node {
-                    padding: UiRect::axes(px(40), px(4)),
-                    ..default()
-                },
-                children![(
-                    Text::new("michelle!"),
-                    TextColor(TEXT_COLOR),
-                    TextFont {
-                        font: server.load(SERIF_FONT_PATH),
-                        font_size: 18.0,
-                        ..default()
-                    },
-                )],
-            ),
-        );
+        // parent.spawn((
+        //     Node {
+        //         padding: UiRect::all(px(20)),
+        //         ..default()
+        //     },
+        //     children![(
+        //         Text::new("special ty!"),
+        //         TextColor(TEXT_COLOR),
+        //         TextFont {
+        //             font: server.load(SANS_FONT_PATH),
+        //             font_size: 30.0,
+        //             ..default()
+        //         },
+        //     )],
+        // ));
+        // parent.spawn((
+        //     Node {
+        //         padding: UiRect::axes(px(40), px(4)),
+        //         ..default()
+        //     },
+        //     children![(
+        //         Text::new("logan!"),
+        //         TextColor(TEXT_COLOR),
+        //         TextFont {
+        //             font: server.load(SERIF_FONT_PATH),
+        //             font_size: 18.0,
+        //             ..default()
+        //         },
+        //     )],
+        // ));
+        // parent.spawn(
+        //     // Playtesters
+        //     (
+        //         Node {
+        //             padding: UiRect::axes(px(40), px(4)),
+        //             ..default()
+        //         },
+        //         children![(
+        //             Text::new("michelle!"),
+        //             TextColor(TEXT_COLOR),
+        //             TextFont {
+        //                 font: server.load(SERIF_FONT_PATH),
+        //                 font_size: 18.0,
+        //                 ..default()
+        //             },
+        //         )],
+        //     ),
+        // );
     });
 }
 

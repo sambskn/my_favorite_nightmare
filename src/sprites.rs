@@ -1,6 +1,7 @@
 use crate::{
     LevelStuff, PlayerCamera, TextBox,
     fonts::SERIF_FONT_PATH,
+    get_scalar_boosted_rand_sfx_speed,
     text_parse::parse_random_text,
     ui::{GameState, TEXT_COLOR},
 };
@@ -314,6 +315,23 @@ impl FaceSprite {
     }
 }
 
+#[derive(Component)]
+struct SpeedCoin {
+    respawn_timer: Option<Timer>,
+    respawn_duration: f32,
+}
+
+const DEFAULT_COIN_RESPAWN_S: f32 = 1.0;
+
+impl Default for SpeedCoin {
+    fn default() -> Self {
+        SpeedCoin {
+            respawn_timer: None,
+            respawn_duration: DEFAULT_COIN_RESPAWN_S,
+        }
+    }
+}
+
 #[point_class(
     model({ path: "sprites/coin.png", scale: .2 }),
 )]
@@ -349,7 +367,12 @@ impl CoinSprite {
                 sound_on_action: None,
                 focus_type: FocusType::Hole,
             },
+            // Enable collision events for this entity.
+            CollisionEventsEnabled,
+            // Read entities colliding with this entity.
+            CollidingEntities::default(),
             LevelStuff,
+            SpeedCoin::default(),
         ));
     }
 }
@@ -506,11 +529,60 @@ impl Plugin for BillboardSpritePlugin {
                     update_billboards::<PlantSprite>.run_if(in_state(GameState::InGame)),
                     update_billboards::<CoinSprite>.run_if(in_state(GameState::InGame)),
                     update_billboards::<FaceSprite>.run_if(in_state(GameState::InGame)),
+                    check_for_coin_intersections.run_if(in_state(GameState::InGame)),
+                    update_coin_respawn.run_if(in_state(GameState::InGame)),
+                    // This last one should be last in the chain because it can despawn levels
                     handle_focus_click
                         .run_if(in_state(GameState::InGame))
                         .run_if(input_just_pressed(MouseButton::Left)),
                 ),
             );
+    }
+}
+
+const COIN_BOOST: f32 = 100.0;
+
+fn check_for_coin_intersections(
+    mut coin_query: Query<(&mut SpeedCoin, &CollidingEntities, &mut Visibility)>,
+    mut player: Single<(&Transform, &mut LinearVelocity), With<PlayerCamera>>,
+    mut commands: Commands,
+    server: Res<AssetServer>,
+) {
+    for (mut speed_coin, colldiing, mut visibility) in &mut coin_query {
+        if speed_coin.respawn_timer.is_none() && !colldiing.0.is_empty() {
+            // hide coin
+            *visibility = Visibility::Hidden;
+            // start respawn timer
+            speed_coin.respawn_timer = Some(Timer::from_seconds(
+                speed_coin.respawn_duration,
+                TimerMode::Once,
+            ));
+            // play noise
+            commands.spawn((
+                SamplePlayer::new(server.load("sounds/boost.wav")),
+                bevy_seedling::sample::PlaybackSettings {
+                    speed: get_scalar_boosted_rand_sfx_speed(1.5) * 2.0,
+                    ..default()
+                },
+            ));
+            // make player go!
+            let mut boost_dir = player.0.local_z().as_vec3().normalize_or_zero() * -1.;
+            boost_dir *= COIN_BOOST;
+            player.1.0 += boost_dir;
+            player.1.0 = player.1.0.clamp_length_max(COIN_BOOST);
+        }
+    }
+}
+
+fn update_coin_respawn(mut coin_query: Query<(&mut SpeedCoin, &mut Visibility)>, time: Res<Time>) {
+    for (mut speed_coin, mut visibility) in &mut coin_query {
+        if let Some(ref mut timer) = speed_coin.respawn_timer {
+            if timer.tick(time.delta()).is_finished() {
+                // Un-hide the coin
+                *visibility = Visibility::Visible;
+                speed_coin.respawn_timer = None;
+            }
+        }
     }
 }
 

@@ -997,7 +997,7 @@
 "classname" "hole_sprite"
 "origin" "-328 360 48"
 "target" ""
-"hole_target" "test.map"
+"hole_target" "womb.map"
 }
 // entity 3
 {
@@ -1028,7 +1028,7 @@
 "classname" "npc_sprite"
 "origin" "-168 -300 24"
 "name" "sid walk"
-"text" "bro im walkin here"
+"text" "me? <i love unfinished level|i stopped voting when they took cocaine out of coke|i love enormous cinnamon rolls and anything smaller than a Honda only garners my disdain|i want to go live in a hole and forget what day it is>"
 "voice_line" "voice8_horntooter"
 }
 // entity 7
