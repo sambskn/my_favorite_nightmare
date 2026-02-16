@@ -81,6 +81,7 @@
 {
 "classname" "player_start"
 "origin" "-536 0 552"
+"bgm_name" "bgm2"
 }
 // entity 3
 {
