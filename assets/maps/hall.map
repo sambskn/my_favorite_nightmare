@@ -7193,7 +7193,7 @@
 {
 "classname" "npc_sprite"
 "origin" "-116 -454 16"
-"text" "hey not trying to judge but this is kind of a hole that assholes go into... yeah i mean go ahead if you want. don't raise your voice."
+"text" "remember those coins? yeah had no time to use em more oof, anyways, get outta here, get in that hole"
 "name" "trying to judge"
 "voice_line" "voice7_gross"
 }
@@ -7201,14 +7201,4 @@
 {
 "classname" "face_sprite"
 "origin" "-8 136 24"
-}
-// entity 31
-{
-"classname" "coin_sprite"
-"origin" "-8 -264 24"
-}
-// entity 32
-{
-"classname" "coin_sprite"
-"origin" "8 -408 24"
 }
