@@ -177,6 +177,9 @@
 {
 "classname" "player_start"
 "origin" "-536 0 552"
+"level_atmosphere_color" "1 0.6666667 1"
+"bgm_name" "bgm1"
+"bgm_vol" "50"
 }
 // entity 3
 {

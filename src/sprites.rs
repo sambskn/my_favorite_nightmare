@@ -19,12 +19,21 @@ use bevy_trenchbroom::prelude::*;
 #[point_class(
     model({ path: "sprites/start.png", scale: 0.5 }),
 )]
-pub struct PlayerStart;
+pub struct PlayerStart {
+    pub level_atmosphere_color: Color,
+    pub bgm_name: String,
+    pub bgm_vol: i32,
+}
+impl Default for PlayerStart {
+    fn default() -> Self {
+        PlayerStart {
+            level_atmosphere_color: Color::WHITE,
+            bgm_name: "bgm1".to_string(),
+            bgm_vol: 100,
+        }
+    }
+}
 
-// point_class marks it for bevy_trenchbroom
-// - adding a model path is for display in trenchbroom, not pulled for bevy side atm
-// component is the bevy macro used to set up the hook for spawning our billboarded sprite
-// (calling the on_add fn below)
 #[point_class(
     model({ path: "sprites/rat.png", scale: 0.5 }),
 )]
@@ -95,6 +104,7 @@ impl NPCSprite {
             emissive: Color::WHITE.into(),
             emissive_texture: Some(asset_server.load("sprites/rat.png")),
             perceptual_roughness: 1.0,
+
             alpha_mode: AlphaMode::Mask(1.0),
             cull_mode: None,
             ..default()

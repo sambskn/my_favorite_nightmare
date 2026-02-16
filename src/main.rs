@@ -99,13 +99,13 @@ fn play_level_intro_stinger(mut commands: Commands, server: Res<AssetServer>) {
 fn on_stinger_finished(
     _: On<Remove, OnIntroStingerFinished>,
     server: Res<AssetServer>,
+    level_start: Res<LevelStartLocation>,
     mut commands: Commands,
 ) {
     // Start level bg, looping
-    // TODO: Do lookup for level?
     commands.spawn((
-        SamplePlayer::new(server.load("sounds/bgm1.wav"))
-            .with_volume(Volume::from_percent(50.))
+        SamplePlayer::new(server.load(format!("sounds/{}.wav", level_start.bgm_name)))
+            .with_volume(Volume::from_percent(level_start.bgm_vol))
             .looping(),
         LevelStuff,
     ));
@@ -153,9 +153,12 @@ const DEFAULT_PLAYER_START_LOC: Vec3 = Vec3::new(1.375, 0.9, 0.6);
 struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource::<LevelStartLocation>(LevelStartLocation(
-            DEFAULT_PLAYER_START_LOC.clone(),
-        ))
+        app.insert_resource::<LevelStartLocation>(LevelStartLocation {
+            spawn: DEFAULT_PLAYER_START_LOC.clone(),
+            bgm_name: "bgm1".to_string(),
+            bgm_vol: 50.,
+            bg_color: Color::srgba(0.35, 0.48, 0.66, 1.0),
+        })
         .add_systems(
             OnTransition {
                 exited: GameState::Loading,
@@ -285,7 +288,12 @@ struct Grounded;
 struct PlayerCamera;
 
 #[derive(Resource, Clone, Debug)]
-struct LevelStartLocation(Vec3);
+struct LevelStartLocation {
+    pub spawn: Vec3,
+    pub bg_color: Color,
+    pub bgm_name: String,
+    pub bgm_vol: f32,
+}
 
 fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
     let player_collider = Collider::cuboid(0.5, 0.5, 0.5);
@@ -299,8 +307,12 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
             order: 1,
             ..default()
         },
-        Transform::from_xyz(level_start.0.x, level_start.0.y, level_start.0.z)
-            .looking_at(Vec3::new(0., level_start.0.y, 0.), Vec3::Y),
+        Transform::from_xyz(
+            level_start.spawn.x,
+            level_start.spawn.y,
+            level_start.spawn.z,
+        )
+        .looking_at(Vec3::new(0., level_start.spawn.y, 0.), Vec3::Y),
         RigidBody::Dynamic,
         ShapeCaster::new(
             caster_shape,
@@ -315,7 +327,7 @@ fn spawn_camera(mut commands: Commands, level_start: Res<LevelStartLocation>) {
         LockedAxes::ROTATION_LOCKED,
         LevelStuff,
         DistanceFog {
-            color: Color::srgba(0.35, 0.48, 0.66, 1.0),
+            color: level_start.bg_color,
             directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.5),
             directional_light_exponent: 30.0,
             falloff: FogFalloff::from_visibility_colors(
@@ -468,7 +480,7 @@ fn debug_commands_and_oob_reset(
         // also do it if we're way oob )happens on wasm sometimes
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
             commands.spawn(SamplePlayer::new(server.load("sounds/badwarp.wav")));
-            player_tf.translation = level_start.0.clone();
+            player_tf.translation = level_start.spawn.clone();
             // also set the velocity to 0 so we don't clip through stuff on respawn
             lin_vel.0 = Vec3::ZERO;
         }
@@ -480,8 +492,12 @@ fn update_player_start_location(
     mut level_start: ResMut<LevelStartLocation>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    for (_new_start, start_transform) in &new_player_start {
-        level_start.0 = start_transform.translation;
+    for (new_start, start_transform) in &new_player_start {
+        level_start.spawn = start_transform.translation;
+        level_start.bgm_name = new_start.bgm_name.clone();
+        level_start.bgm_vol = new_start.bgm_vol as f32;
+        level_start.bg_color = new_start.level_atmosphere_color;
+
         // Also set state to loaded (is this the right place to do this lol?)
         next_state.set(GameState::InGame);
     }
