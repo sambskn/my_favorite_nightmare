@@ -370,11 +370,11 @@ fn update_grounded(
 fn get_random_oof_sound_path() -> String {
     let mut rng = rand::rng();
     let noises = vec![
-        "sounds/pain1.wav",
-        "sounds/pain2.wav",
-        "sounds/pain3.wav",
-        "sounds/pain4.wav",
-        "sounds/pain5.wav",
+        "sounds/huh1.wav",
+        "sounds/huh2.wav",
+        "sounds/huh3.wav",
+        "sounds/huh4.wav",
+        "sounds/huh5.wav",
     ];
     noises.choose(&mut rng).unwrap().to_string()
 }
@@ -479,12 +479,25 @@ fn debug_commands_and_oob_reset(
         // reset player location to start transform
         // also do it if we're way oob )happens on wasm sometimes
         if input.pressed(KeyCode::KeyR) || player_tf.translation.y < MIN_Y {
-            commands.spawn(SamplePlayer::new(server.load("sounds/badwarp.wav")));
+            commands.spawn(SamplePlayer::new(server.load(get_random_dead_sound_path())));
             player_tf.translation = level_start.spawn.clone();
             // also set the velocity to 0 so we don't clip through stuff on respawn
             lin_vel.0 = Vec3::ZERO;
         }
     }
+}
+
+fn get_random_dead_sound_path() -> String {
+    let mut rng = rand::rng();
+    let noises = vec![
+        "sounds/dead1.wav",
+        "sounds/dead2.wav",
+        "sounds/dead3.wav",
+        "sounds/dead4.wav",
+        "sounds/dead5.wav",
+        "sounds/dead6.wav",
+    ];
+    noises.choose(&mut rng).unwrap().to_string()
 }
 
 fn update_player_start_location(
